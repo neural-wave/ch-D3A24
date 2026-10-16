@@ -77,6 +77,26 @@ The holdout comes from the starter repo, created once from `local/neural-wave-20
 .venv/Scripts/python.exe scripts/make_holdout.py --pairs ../../data/sartiq_neural_wave_2026/train/pairs.jsonl --frac 0.1 --seed 0 --out holdout --group-by-target
 ```
 
+## The pipeline (current best)
+
+One command per split. It generates every garment and writes a validated submission to `local/submissions/<team>/`:
+
+```bash
+python scripts/run_pipeline.py --split dev --dry-run
+```
+
+```bash
+python scripts/run_pipeline.py --split dev
+```
+
+What it does for each garment:
+
+1. Takes every photo of the garment (up to the model's limit).
+2. Sends them to nano-banana 2.1 (fal) on a 2:3 portrait canvas with the `sartiq-style-v2` prompt: Sartiq's catalogue style written as rules per garment type (sleeves down along the body, closures done up, trouser legs straight and parallel, light-grey background, whole garment visible).
+3. Converts the result to PNG and exports it in the official layout, then runs the official validator.
+
+Cost: about $0.06 per garment. Results are cached by content, so reruns are free.
+
 ## Generation experiments
 
 Run from the repo root. Always dry-run first: it prints the number of calls and the cost.
@@ -100,14 +120,37 @@ python scripts/contact_sheet.py --run holdout_nb21_baseline --split holdout
 - `generate.py` writes `local/runs/<run>/cand_<k>/<id>/front.png`; `--samples K` gives K candidates per garment, `--inputs all` sends every photo of the garment.
 - `score_run.py` scores each candidate with the official scorer and appends one row to `experiments/results.csv`, including `best_of_k` (the score if we always picked the best candidate).
 - Spending stops at `ZIR_FAL_BUDGET_USD` (default $70, counted in `local/fal_ledger.jsonl`).
-- Models: `nano-banana-2.1` (official baseline), `nano-banana-2.1-portrait` (2:3 canvas), `nano-banana-pro`, `flux-2`, `seedream-4.5`. Prompts: `baseline` (official), `studio-white-v1`.
+- Models: `nano-banana-2.1` (official baseline), `nano-banana-2.1-portrait` (2:3 canvas), `nano-banana-pro`, `flux-2`, `seedream-4.5`. Prompts: `baseline` (official), `studio-white-v1`, `sartiq-style-v2`.
+- `--preprocess cutout` sends the garment cut out on white instead of the raw photo (see findings: it hurts).
+- `cutout_run.py` makes zero-cost runs without generation (cut-out of the input, or re-framing of a generation run).
 
-Reference scores on our holdout (38 pairs, grouped by target):
+## Findings so far (holdout, 38 pairs grouped by target)
 
-| Config | Holdout | Dev (official) |
-|---|---|---|
-| identity (input unchanged) | 39.78 | 48.37 |
-| official one-shot baseline (nano-banana-2.1, first photo) | 60.22 | 68.71 |
+Paired differences are against the same 38 garments; with this sample size, gaps under about 1.5 points are within noise.
+
+| Config | Holdout | Colour | LPIPS | CLIP | IoU | $/garment |
+|---|---|---|---|---|---|---|
+| Input unchanged (identity) | 39.78 | 0.38 | 0.16 | 0.50 | 0.68 | 0 |
+| Input cut out on grey, no generation | 40.09 | 0.38 | 0.18 | 0.55 | 0.61 | 0 |
+| Official baseline (nano-banana 2.1, first photo) | 60.22 | 0.61 | 0.35 | 0.73 | 0.84 | 0.06 |
+| nano-banana 2.1 portrait, official prompt | 60.92 | 0.63 | 0.35 | 0.72 | 0.84 | 0.06 |
+| nano-banana 2.1 portrait, `studio-white-v1`, all photos | 61.04 | 0.61 | 0.37 | 0.74 | 0.85 | 0.06 |
+| same + cut-out inputs (`--preprocess cutout`) | 57.16 | 0.56 | 0.32 | 0.71 | 0.82 | 0.06 |
+| same, re-framed on grey after generation | 60.13 | 0.61 | 0.36 | 0.72 | 0.84 | 0.06 |
+| nano-banana Pro, `studio-white-v1`, all photos | 61.23 | 0.62 | 0.36 | 0.75 | 0.83 | 0.15 |
+| **nano-banana 2.1 portrait, `sartiq-style-v2`, all photos (pipeline)** | **61.82** | **0.64** | 0.35 | 0.75 | 0.85 | 0.06 |
+| Seedream 4.5, `studio-white-v1`, all photos | 49.59 | 0.49 | 0.24 | 0.65 | 0.73 | 0.04 |
+| FLUX.2 [dev], `studio-white-v1`, all photos | 43.36 | 0.34 | 0.25 | 0.59 | 0.73 | 0.07 |
+
+What we learned (official dev numbers: identity 48.37, one-shot baseline 68.71):
+
+- **Generation is needed.** Without it the garment keeps the hanger or mannequin pose, and silhouette and LPIPS stay at the level of the raw photo.
+- **The Sartiq-style prompt is the best change so far:** +1.6 over the official baseline (wins on 25 of 38 garments) at the same cost.
+- **Pro is not worth 2.5x the price** here, and FLUX.2 and Seedream change the garment (wrong colour, extra trousers from the mannequin, a sweater turned into a cardigan).
+- **Cutting the garment out before generation hurts** (-3.9, wins on 13 of 38): the model loses context and colour. Re-framing after generation does not help either.
+- **Picking among candidates is not worth paying for yet.** The best of 4 nano-banana outputs would score 64.83, but choosing without the reference (scoring each candidate against the garment's own photos) only reaches 61.41 against 60.85 for a random pick.
+- **Correcting colour after generation hurts.** A colour model trained on the 344 holdout-train pairs (phone colour to studio colour) predicts worse than nano-banana already does (quantile distance 8.2 vs 3.7) and drops the score to 48-56. The model's outputs are only slightly too light (+2.5 L*) and yellow (+1 b*) on average.
+- **Open question:** the holdout has only 4 multi-photo pairs, so "first photo vs all photos" and filtering bad photos (tags, back views) still need a test on the multi-photo train pairs. On-site test garments come with 2 photos each.
 
 ## Optional dependency groups
 

@@ -16,6 +16,8 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from collections.abc import Callable
+from pathlib import Path
 
 from zir_image_enhancer.dataset import load_manifest, split_manifest
 from zir_image_enhancer.generation.fal_backend import CostLedger, FalGenerator
@@ -48,9 +50,28 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--run", required=True, help="run name; outputs go to local/runs/<run>/")
     parser.add_argument("--workers", type=int, default=4, help="parallel fal calls")
     parser.add_argument(
+        "--preprocess",
+        default="none",
+        choices=["none", "cutout"],
+        help="cutout: send the garment cut out, framed and upscaled on white",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true", help="print the plan and cost, call nothing"
     )
     return parser.parse_args(argv)
+
+
+def build_preprocessor(name: str, paths: ProjectPaths) -> Callable[[Path], Path] | None:
+    if name == "none":
+        return None
+    # Imported here so plain runs do not need rembg installed.
+    from zir_image_enhancer.preprocess.cutout import CutoutSettings, GarmentCutter
+
+    cutter = GarmentCutter(
+        CutoutSettings(background=(255, 255, 255), margin=0.08, min_long_side=1024),
+        cache_dir=paths.repo_root / "local" / "preprocessed",
+    )
+    return cutter.cut_file
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -70,13 +91,15 @@ def main(argv: list[str] | None = None) -> int:
         inputs=InputSelection(args.inputs),
         samples=args.samples,
         seed_base=args.seed_base,
+        preprocess=args.preprocess,
     )
     budget = float(os.environ.get("ZIR_FAL_BUDGET_USD", DEFAULT_BUDGET_USD))
     ledger = CostLedger(paths.fal_ledger)
+    preprocessor = build_preprocessor(args.preprocess, paths)
 
     if args.dry_run:
         # Built without a generator, so a dry run never needs FAL_KEY.
-        run = GenerationRun(config, generator=None, runs_root=paths.runs_root)
+        run = GenerationRun(config, None, paths.runs_root, preprocessor)
         planned = run.plan(items)
         print(f"run      : {run.run_dir}")
         print(f"garments : {len(items)}   calls: {len(planned)}")
@@ -90,7 +113,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     generator = FalGenerator(cache_dir=paths.fal_cache, ledger=ledger, budget_usd=budget)
-    run = GenerationRun(config, generator, paths.runs_root)
+    run = GenerationRun(config, generator, paths.runs_root, preprocessor)
     summary = run.execute(items, workers=args.workers)
     print(
         f"done: {summary.generated} generated, {summary.from_cache} from cache, "

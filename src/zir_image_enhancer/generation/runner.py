@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from enum import Enum
@@ -40,6 +41,7 @@ class RunConfig:
     inputs: InputSelection
     samples: int = 1
     seed_base: int | None = None
+    preprocess: str = "none"  # recorded for the results table; the function is passed in
 
     def to_json(self) -> dict[str, object]:
         data = asdict(self)
@@ -66,12 +68,20 @@ def select_inputs(
 
 
 class GenerationRun:
-    def __init__(self, config: RunConfig, generator: Generator | None, runs_root: Path) -> None:
+    def __init__(
+        self,
+        config: RunConfig,
+        generator: Generator | None,
+        runs_root: Path,
+        preprocessor: Callable[[Path], Path] | None = None,
+    ) -> None:
         # generator can be None for planning only (dry runs), so no API key is needed.
+        # preprocessor maps an input photo to the file actually sent (for example a cut-out).
         self._config = config
         self._generator = generator
         self._run_dir = runs_root / config.name
         self._model = get_model(config.model_key)
+        self._preprocessor = preprocessor
 
     @property
     def run_dir(self) -> Path:
@@ -81,6 +91,8 @@ class GenerationRun:
         planned: list[tuple[GarmentItem, GenerationRequest]] = []
         for item in items:
             images = select_inputs(item, self._config.inputs, self._model)
+            if self._preprocessor is not None:
+                images = tuple(self._preprocessor(path) for path in images)
             prompt = build_prompt(self._config.prompt_key, len(images))
             for sample in range(self._config.samples):
                 seed = None if self._config.seed_base is None else self._config.seed_base + sample

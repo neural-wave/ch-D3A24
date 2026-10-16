@@ -5,3 +5,7 @@ at,run,model,prompt,inputs,samples,pairs,score,colour,lpips,clip,geometry,ssim,b
 2026-10-16T20:25+00:00,holdout_nb21p_v1_all,nano-banana-2.1-portrait,studio-white-v1,all,1,38,61.04,0.6095,0.3691,0.7402,0.8489,0.7198,61.04,0.06,14.7
 2026-10-16T20:27+00:00,holdout_flux2_v1_all,flux-2,studio-white-v1,all,1,38,43.36,0.3422,0.2524,0.5945,0.7315,0.6937,43.36,0.07,24.5
 2026-10-16T20:29+00:00,holdout_nbpro_v1_all,nano-banana-pro,studio-white-v1,all,1,38,61.23,0.6231,0.3591,0.7511,0.8319,0.7175,61.23,0.15,21.0
+2026-10-16T21:23+00:00,holdout_cutout_inputs,cutout,inputs,first,1,38,40.09,0.3795,0.1775,0.5538,0.6095,0.6053,40.09,0.0,0.0
+2026-10-16T21:26+00:00,holdout_nb21p_v1_post,cutout,run:holdout_nb21p_v1_all,first,1,38,60.13,0.6055,0.3589,0.717,0.8388,0.719,60.13,0.0,0.0
+2026-10-16T21:28+00:00,holdout_nb21p_v2_all,nano-banana-2.1-portrait,sartiq-style-v2,all,1,38,61.82,0.6404,0.3481,0.7477,0.8481,0.7137,61.82,0.06,17.6
+2026-10-16T21:30+00:00,holdout_nb21p_v1_all_cut,nano-banana-2.1-portrait,studio-white-v1,all,1,38,57.16,0.5648,0.3245,0.7065,0.8228,0.7027,57.16,0.06,17.2
