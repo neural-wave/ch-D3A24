@@ -23,7 +23,12 @@ from zir_image_enhancer.dataset import load_manifest, split_manifest
 from zir_image_enhancer.generation.fal_backend import CostLedger, FalGenerator
 from zir_image_enhancer.generation.models import MODELS
 from zir_image_enhancer.generation.prompts import TEMPLATES
-from zir_image_enhancer.generation.runner import GenerationRun, InputSelection, RunConfig
+from zir_image_enhancer.generation.runner import (
+    GenerationRun,
+    InputSelection,
+    PhotoSelector,
+    RunConfig,
+)
 from zir_image_enhancer.paths import ProjectPaths
 
 DEFAULT_BUDGET_USD = 70.0
@@ -50,10 +55,16 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--run", required=True, help="run name; outputs go to local/runs/<run>/")
     parser.add_argument("--workers", type=int, default=4, help="parallel fal calls")
     parser.add_argument(
+        "--manifest", type=Path, default=None, help="any manifest file; overrides --split"
+    )
+    parser.add_argument(
         "--preprocess",
         default="none",
-        choices=["none", "cutout"],
-        help="cutout: send the garment cut out, framed and upscaled on white",
+        choices=["none", "cutout", "crop", "denoise"],
+        help=(
+            "cutout: garment cut out on white; crop: framed around the garment, real "
+            "background kept (both upscale small photos); denoise: mild OpenCV denoise."
+        ),
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="print the plan and cost, call nothing"
@@ -62,22 +73,57 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 
 def build_preprocessor(name: str, paths: ProjectPaths) -> Callable[[Path], Path] | None:
+    # Heavy dependencies are imported only when the option is used, so plain runs do not
+    # need rembg, OpenCV or torch installed.
+    cache_dir = paths.repo_root / "local" / "preprocessed"
     if name == "none":
         return None
-    # Imported here so plain runs do not need rembg installed.
+    if name == "denoise":
+        from zir_image_enhancer.preprocess.denoise import Denoiser
+
+        return Denoiser(cache_dir=cache_dir).denoise_file
+
     from zir_image_enhancer.preprocess.cutout import CutoutSettings, GarmentCutter
 
-    cutter = GarmentCutter(
-        CutoutSettings(background=(255, 255, 255), margin=0.08, min_long_side=1024),
-        cache_dir=paths.repo_root / "local" / "preprocessed",
+    settings = CutoutSettings(
+        background=(255, 255, 255),
+        margin=0.08,
+        min_long_side=1024,
+        keep_background=(name == "crop"),
     )
-    return cutter.cut_file
+    return GarmentCutter(settings, cache_dir=cache_dir).cut_file
+
+
+def build_photo_selector(inputs: str) -> PhotoSelector | None:
+    if inputs != InputSelection.FILTERED.value:
+        return None
+    from zir_image_enhancer.preprocess.photo_filter import PhotoFilter
+
+    photo_filter = PhotoFilter()
+    decisions: dict[tuple[Path, ...], tuple[Path, ...]] = {}
+
+    def select(photos: tuple[Path, ...]) -> tuple[Path, ...]:
+        # plan() runs more than once per run (cost estimate, then execution); remember
+        # each decision so CLIP runs once per garment and the log is printed once.
+        if photos not in decisions:
+            decision = photo_filter.select(photos)
+            decisions[photos] = decision.kept
+            for verdict in decision.verdicts:
+                mark = "keep" if verdict.path in decision.kept else "drop"
+                print(
+                    f"  filter {mark} {verdict.path.parent.name}/{verdict.path.name}: "
+                    f"{verdict.label} (front {verdict.front_probability:.2f})"
+                )
+        return decisions[photos]
+
+    return select
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     paths = ProjectPaths.from_env()
-    items = load_manifest(split_manifest(args.split, paths), paths.data_root)
+    manifest = args.manifest or split_manifest(args.split, paths)
+    items = load_manifest(manifest, paths.data_root)
     if args.ids:
         wanted = set(args.ids)
         items = [item for item in items if item.item_id in wanted]
@@ -96,10 +142,11 @@ def main(argv: list[str] | None = None) -> int:
     budget = float(os.environ.get("ZIR_FAL_BUDGET_USD", DEFAULT_BUDGET_USD))
     ledger = CostLedger(paths.fal_ledger)
     preprocessor = build_preprocessor(args.preprocess, paths)
+    photo_selector = build_photo_selector(args.inputs)
 
     if args.dry_run:
         # Built without a generator, so a dry run never needs FAL_KEY.
-        run = GenerationRun(config, None, paths.runs_root, preprocessor)
+        run = GenerationRun(config, None, paths.runs_root, preprocessor, photo_selector)
         planned = run.plan(items)
         print(f"run      : {run.run_dir}")
         print(f"garments : {len(items)}   calls: {len(planned)}")
@@ -113,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     generator = FalGenerator(cache_dir=paths.fal_cache, ledger=ledger, budget_usd=budget)
-    run = GenerationRun(config, generator, paths.runs_root, preprocessor)
+    run = GenerationRun(config, generator, paths.runs_root, preprocessor, photo_selector)
     summary = run.execute(items, workers=args.workers)
     print(
         f"done: {summary.generated} generated, {summary.from_cache} from cache, "

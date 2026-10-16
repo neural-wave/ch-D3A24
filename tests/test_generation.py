@@ -16,7 +16,12 @@ from zir_image_enhancer.generation.fal_backend import (
 )
 from zir_image_enhancer.generation.models import get_model
 from zir_image_enhancer.generation.prompts import build_prompt
-from zir_image_enhancer.generation.runner import GenerationRun, InputSelection, RunConfig
+from zir_image_enhancer.generation.runner import (
+    GenerationRun,
+    InputSelection,
+    RunConfig,
+    select_inputs,
+)
 
 
 def _jpeg(path: Path, colour: tuple[int, int, int]) -> Path:
@@ -147,3 +152,12 @@ def test_to_png_flattens_transparency_onto_white() -> None:
     Image.new("RGBA", (4, 4), (0, 0, 0, 0)).save(buffer, format="PNG")
     pixel = Image.open(io.BytesIO(to_png_bytes(buffer.getvalue()))).getpixel((0, 0))
     assert pixel == (255, 255, 255)
+
+
+def test_filtered_inputs_use_the_selector_and_respect_model_limit(dataset: Path) -> None:
+    item = load_manifest(dataset / "dev/inputs.jsonl", dataset)[0]
+    reversed_selector = lambda photos: tuple(reversed(photos))  # noqa: E731
+    chosen = select_inputs(item, InputSelection.FILTERED, get_model("flux-2"), reversed_selector)
+    assert chosen[0].name == "input_3.jpg"
+    with pytest.raises(ValueError):
+        select_inputs(item, InputSelection.FILTERED, get_model("flux-2"))

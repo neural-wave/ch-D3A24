@@ -34,9 +34,13 @@ class CutoutSettings:
     # then used as it is instead of a broken cut-out.
     min_mask_fraction: float = 0.02
     max_mask_fraction: float = 0.95
+    # True: only crop around the garment and keep the real background. Removing the
+    # background before generation cost 3.9 points on the holdout; this tells whether the
+    # loss came from the removal itself or from the framing.
+    keep_background: bool = False
 
     def key(self) -> str:
-        return f"bg{self.background}-m{self.margin}-ls{self.min_long_side}"
+        return f"bg{self.background}-m{self.margin}-ls{self.min_long_side}-kb{self.keep_background}"
 
 
 @dataclass(frozen=True)
@@ -73,6 +77,9 @@ class GarmentCutter:
         if not (self._settings.min_mask_fraction <= fraction <= self._settings.max_mask_fraction):
             return CutoutResult(self._upscale(rgb), fraction, used_fallback=True)
 
+        if self._settings.keep_background:
+            return CutoutResult(self._upscale(self._crop(rgb, hard)), fraction, False)
+
         pixels = np.asarray(rgb, dtype=np.float32)
         background = np.array(self._settings.background, dtype=np.float32)
         alpha = soft[..., None]
@@ -105,6 +112,20 @@ class GarmentCutter:
         )
         canvas.paste(garment, (pad, pad))
         return canvas
+
+    def _crop(self, rgb: Image.Image, mask: np.ndarray) -> Image.Image:
+        """Crop the original photo around the garment, margin included, inside the image."""
+        rows = np.flatnonzero(mask.any(axis=1))
+        cols = np.flatnonzero(mask.any(axis=0))
+        top, bottom, left, right = rows[0], rows[-1] + 1, cols[0], cols[-1] + 1
+        pad = int(round(self._settings.margin * max(bottom - top, right - left)))
+        box = (
+            max(0, left - pad),
+            max(0, top - pad),
+            min(rgb.width, right + pad),
+            min(rgb.height, bottom + pad),
+        )
+        return rgb.crop(box)
 
     def _upscale(self, image: Image.Image) -> Image.Image:
         target = self._settings.min_long_side

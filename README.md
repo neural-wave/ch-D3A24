@@ -91,7 +91,7 @@ python scripts/run_pipeline.py --split dev
 
 What it does for each garment:
 
-1. Takes every photo of the garment (up to the model's limit).
+1. Takes only the first photo of the garment. On multi-photo train pairs, sending every photo or a CLIP-filtered set scored slightly lower; on test the second supplied photo is always the back, which can leak a back print onto the front. `--inputs all|filtered` are still available.
 2. Sends them to nano-banana 2.1 (fal) on a 2:3 portrait canvas with the `sartiq-style-v2` prompt: Sartiq's catalogue style written as rules per garment type (sleeves down along the body, closures done up, trouser legs straight and parallel, light-grey background, whole garment visible).
 3. Converts the result to PNG and exports it in the official layout, then runs the official validator.
 
@@ -121,7 +121,9 @@ python scripts/contact_sheet.py --run holdout_nb21_baseline --split holdout
 - `score_run.py` scores each candidate with the official scorer and appends one row to `experiments/results.csv`, including `best_of_k` (the score if we always picked the best candidate).
 - Spending stops at `ZIR_FAL_BUDGET_USD` (default $70, counted in `local/fal_ledger.jsonl`).
 - Models: `nano-banana-2.1` (official baseline), `nano-banana-2.1-portrait` (2:3 canvas), `nano-banana-pro`, `flux-2`, `seedream-4.5`. Prompts: `baseline` (official), `studio-white-v1`, `sartiq-style-v2`.
-- `--preprocess cutout` sends the garment cut out on white instead of the raw photo (see findings: it hurts).
+- `--preprocess cutout|crop|denoise` changes the photo before it is sent (see findings: all three hurt).
+- `--inputs filtered` keeps only full front views, chosen by local CLIP (`preprocess/photo_filter.py`); it drops tags, barcodes, bags and close-ups.
+- `--manifest <file>` runs on any manifest; `score_run.py --pairs <file>` scores against it.
 - `cutout_run.py` makes zero-cost runs without generation (cut-out of the input, or re-framing of a generation run).
 
 ## Findings so far (holdout, 38 pairs grouped by target)
@@ -136,9 +138,11 @@ Paired differences are against the same 38 garments; with this sample size, gaps
 | nano-banana 2.1 portrait, official prompt | 60.92 | 0.63 | 0.35 | 0.72 | 0.84 | 0.06 |
 | nano-banana 2.1 portrait, `studio-white-v1`, all photos | 61.04 | 0.61 | 0.37 | 0.74 | 0.85 | 0.06 |
 | same + cut-out inputs (`--preprocess cutout`) | 57.16 | 0.56 | 0.32 | 0.71 | 0.82 | 0.06 |
+| pipeline + crop around the garment, background kept (`--preprocess crop`) | 60.50 | 0.63 | 0.33 | 0.73 | 0.84 | 0.06 |
+| pipeline + mild OpenCV denoise (`--preprocess denoise`) | 59.95 | 0.62 | 0.33 | 0.73 | 0.83 | 0.06 |
 | same, re-framed on grey after generation | 60.13 | 0.61 | 0.36 | 0.72 | 0.84 | 0.06 |
 | nano-banana Pro, `studio-white-v1`, all photos | 61.23 | 0.62 | 0.36 | 0.75 | 0.83 | 0.15 |
-| **nano-banana 2.1 portrait, `sartiq-style-v2`, all photos (pipeline)** | **61.82** | **0.64** | 0.35 | 0.75 | 0.85 | 0.06 |
+| **nano-banana 2.1 portrait, `sartiq-style-v2`, all photos** | **61.82** | **0.64** | 0.35 | 0.75 | 0.85 | 0.06 |
 | Seedream 4.5, `studio-white-v1`, all photos | 49.59 | 0.49 | 0.24 | 0.65 | 0.73 | 0.04 |
 | FLUX.2 [dev], `studio-white-v1`, all photos | 43.36 | 0.34 | 0.25 | 0.59 | 0.73 | 0.07 |
 
@@ -150,7 +154,16 @@ What we learned (official dev numbers: identity 48.37, one-shot baseline 68.71):
 - **Cutting the garment out before generation hurts** (-3.9, wins on 13 of 38): the model loses context and colour. Re-framing after generation does not help either.
 - **Picking among candidates is not worth paying for yet.** The best of 4 nano-banana outputs would score 64.83, but choosing without the reference (scoring each candidate against the garment's own photos) only reaches 61.41 against 60.85 for a random pick.
 - **Correcting colour after generation hurts.** A colour model trained on the 344 holdout-train pairs (phone colour to studio colour) predicts worse than nano-banana already does (quantile distance 8.2 vs 3.7) and drops the score to 48-56. The model's outputs are only slightly too light (+2.5 L*) and yellow (+1 b*) on average.
-- **Open question:** the holdout has only 4 multi-photo pairs, so "first photo vs all photos" and filtering bad photos (tags, back views) still need a test on the multi-photo train pairs. On-site test garments come with 2 photos each.
+- **Any change to the input photo hurts.** Cut-out on white -3.9, crop with the real background -1.3 (13 of 38 wins), mild denoise -1.9 (14 of 38). The edit model seems to read the whole scene (scale, light, context) and does better with the photo as it is.
+- **More photos do not help.** On the 43 multi-photo pairs of holdout-train (never used for tuning), with the pipeline prompt:
+
+  | Photos sent | Score | vs first photo |
+  |---|---|---|
+  | First photo only | **61.46** | |
+  | All photos | 60.71 | -0.76, 20 of 43 wins |
+  | CLIP-filtered (no tags, bags, close-ups) | 60.83 | -0.63, 18 of 43 wins |
+
+  The differences are within noise, but none beats the first photo, which is also the cheapest. The pipeline now sends the first photo only.
 
 ## Optional dependency groups
 

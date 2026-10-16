@@ -9,3 +9,8 @@ at,run,model,prompt,inputs,samples,pairs,score,colour,lpips,clip,geometry,ssim,b
 2026-10-16T21:26+00:00,holdout_nb21p_v1_post,cutout,run:holdout_nb21p_v1_all,first,1,38,60.13,0.6055,0.3589,0.717,0.8388,0.719,60.13,0.0,0.0
 2026-10-16T21:28+00:00,holdout_nb21p_v2_all,nano-banana-2.1-portrait,sartiq-style-v2,all,1,38,61.82,0.6404,0.3481,0.7477,0.8481,0.7137,61.82,0.06,17.6
 2026-10-16T21:30+00:00,holdout_nb21p_v1_all_cut,nano-banana-2.1-portrait,studio-white-v1,all,1,38,57.16,0.5648,0.3245,0.7065,0.8228,0.7027,57.16,0.06,17.2
+2026-10-16T22:05+00:00,holdout_nb21p_v2_all_crop,nano-banana-2.1-portrait,sartiq-style-v2,all,1,38,60.5,0.6274,0.3335,0.7325,0.836,0.7075,60.5,0.06,15.6
+2026-10-16T22:09+00:00,holdout_nb21p_v2_all_denoise,nano-banana-2.1-portrait,sartiq-style-v2,all,1,38,59.95,0.6201,0.3267,0.7313,0.8286,0.7162,59.95,0.06,16.7
+2026-10-16T22:13+00:00,trainmulti_v2_first,nano-banana-2.1-portrait,sartiq-style-v2,first,1,43,61.46,0.6206,0.3602,0.7874,0.8151,0.7193,61.46,0.06,15.9
+2026-10-16T22:17+00:00,trainmulti_v2_all,nano-banana-2.1-portrait,sartiq-style-v2,all,1,43,60.71,0.6153,0.3458,0.7883,0.8049,0.7105,60.71,0.06,24.7
+2026-10-16T22:21+00:00,trainmulti_v2_filtered,nano-banana-2.1-portrait,sartiq-style-v2,filtered,1,43,60.83,0.6155,0.3498,0.7854,0.8064,0.718,60.83,0.054,21.2

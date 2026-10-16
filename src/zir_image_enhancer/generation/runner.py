@@ -31,6 +31,7 @@ from zir_image_enhancer.generation.prompts import build_prompt
 class InputSelection(Enum):
     FIRST = "first"  # what the official baseline does
     ALL = "all"  # every photo of the garment, up to the model's reference limit
+    FILTERED = "filtered"  # only full front views, chosen by the photo filter
 
 
 @dataclass(frozen=True)
@@ -59,11 +60,21 @@ class RunSummary:
     stopped_by_budget: bool
 
 
+PhotoSelector = Callable[[tuple[Path, ...]], tuple[Path, ...]]
+
+
 def select_inputs(
-    item: GarmentItem, selection: InputSelection, model: ModelSpec
+    item: GarmentItem,
+    selection: InputSelection,
+    model: ModelSpec,
+    photo_selector: PhotoSelector | None = None,
 ) -> tuple[Path, ...]:
     if selection is InputSelection.FIRST:
         return item.inputs[:1]
+    if selection is InputSelection.FILTERED:
+        if photo_selector is None:
+            raise ValueError("inputs=filtered needs a photo selector")
+        return photo_selector(item.inputs)[: model.max_references]
     return item.inputs[: model.max_references]
 
 
@@ -74,14 +85,17 @@ class GenerationRun:
         generator: Generator | None,
         runs_root: Path,
         preprocessor: Callable[[Path], Path] | None = None,
+        photo_selector: PhotoSelector | None = None,
     ) -> None:
         # generator can be None for planning only (dry runs), so no API key is needed.
-        # preprocessor maps an input photo to the file actually sent (for example a cut-out).
+        # preprocessor maps an input photo to the file actually sent (for example a cut-out);
+        # photo_selector decides which photos are sent when inputs=filtered.
         self._config = config
         self._generator = generator
         self._run_dir = runs_root / config.name
         self._model = get_model(config.model_key)
         self._preprocessor = preprocessor
+        self._photo_selector = photo_selector
 
     @property
     def run_dir(self) -> Path:
@@ -90,7 +104,7 @@ class GenerationRun:
     def plan(self, items: list[GarmentItem]) -> list[tuple[GarmentItem, GenerationRequest]]:
         planned: list[tuple[GarmentItem, GenerationRequest]] = []
         for item in items:
-            images = select_inputs(item, self._config.inputs, self._model)
+            images = select_inputs(item, self._config.inputs, self._model, self._photo_selector)
             if self._preprocessor is not None:
                 images = tuple(self._preprocessor(path) for path in images)
             prompt = build_prompt(self._config.prompt_key, len(images))

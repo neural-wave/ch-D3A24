@@ -36,13 +36,15 @@ RESULT_COLUMNS = (
 )
 
 
-def score_candidate(paths: ProjectPaths, run_dir: Path, candidate: str, jobs: int) -> Path:
+def score_candidate(
+    paths: ProjectPaths, run_dir: Path, candidate: str, jobs: int, pairs: Path
+) -> Path:
     out_dir = run_dir / "scores" / candidate
     command = [
         str(paths.scorer_python()),
         str(paths.starter_root / "scripts" / "eval_val.py"),
         "--pairs",
-        str(paths.holdout_val),
+        str(pairs),
         "--preds",
         str(run_dir),
         "--team",
@@ -100,6 +102,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run", required=True, help="run name under local/runs/")
     parser.add_argument("--jobs", type=int, default=1, help="scorer workers (~1.4 GB RAM each)")
     parser.add_argument(
+        "--pairs", type=Path, default=None, help="pairs manifest to score on (default: holdout)"
+    )
+    parser.add_argument(
         "--no-log", action="store_true", help="do not append to experiments/results.csv"
     )
     args = parser.parse_args(argv)
@@ -115,7 +120,9 @@ def main(argv: list[str] | None = None) -> int:
     team_rows: list[dict[str, str]] = []
     per_pair: list[dict[str, float]] = []
     for candidate in candidates:
-        score_dir = score_candidate(paths, run_dir, candidate, args.jobs)
+        score_dir = score_candidate(
+            paths, run_dir, candidate, args.jobs, args.pairs or paths.holdout_val
+        )
         team_rows.append(read_team_row(score_dir))
         per_pair.append(read_pair_scores(score_dir))
 
