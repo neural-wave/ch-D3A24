@@ -48,9 +48,35 @@ MODELS: dict[str, ModelSpec] = {
             True,
             {"aspect_ratio": "2:3"},
         ),
-        ModelSpec("nano-banana-pro", "fal-ai/nano-banana-pro/edit", 14, 0.15, False),
-        ModelSpec("flux-2", "fal-ai/flux-2/edit", 9, 0.05, True),
-        ModelSpec("seedream-4.5", "fal-ai/bytedance/seedream/v4.5/edit", 10, 0.05, True),
+        # The other models also get a portrait canvas, so the comparison is between models
+        # and not between canvas shapes. Prices are from each model's fal page.
+        ModelSpec(
+            "nano-banana-pro",
+            "fal-ai/nano-banana-pro/edit",
+            14,
+            0.15,
+            True,
+            {"aspect_ratio": "2:3"},
+        ),
+        # FLUX.2 [dev] edit reads at most 4 images and bills $0.012 per megapixel on every
+        # input (resized to 1 MP) and on the output, so 4 inputs + a 1.6 MP output is ~$0.07.
+        ModelSpec(
+            "flux-2",
+            "fal-ai/flux-2/edit",
+            4,
+            0.07,
+            True,
+            {"image_size": {"width": 1024, "height": 1536}},
+        ),
+        # Seedream needs at least 1920 px per side (or a large total pixel count).
+        ModelSpec(
+            "seedream-4.5",
+            "fal-ai/bytedance/seedream/v4.5/edit",
+            10,
+            0.04,
+            True,
+            {"image_size": {"width": 1920, "height": 2880}},
+        ),
     )
 }
 
