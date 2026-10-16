@@ -4,12 +4,9 @@
         "dockerfile": "Dockerfile",
         "context": ".."
     },
-    // The GPU is used when the host has one; otherwise the container still starts (CPU only).
     "runArgs": [
         "--shm-size=8g"
     ],
-    // Model weights and the uv cache live in a Docker volume, outside the repo:
-    // they survive rebuilds, never end up in Git, and load fast on Windows.
     "mounts": [
         "source=zir-model-cache,target=/root/.cache,type=volume"
     ],
@@ -26,14 +23,14 @@
             "onAutoForward": "notify"
         }
     },
-    // Dependencies are already in the image; this only links our own package in editable mode.
     "postCreateCommand": "uv pip install --system --no-deps -e .",
     "customizations": {
         "vscode": {
             "extensions": [
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "charliermarsh.ruff"
+                "charliermarsh.ruff",
+                "sst-dev.opencode"
             ],
             "settings": {
                 "python.defaultInterpreterPath": "/opt/conda/bin/python",

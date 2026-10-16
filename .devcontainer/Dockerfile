@@ -20,6 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && git lfs install \
     && rm -rf /var/lib/apt/lists/*
 
+# Install OpenCode CLI globally
+RUN curl -fsSL https://opencode.ai/v2/install | bash \
+    && mv /root/.opencode/bin/opencode /usr/local/bin/opencode \
+    && rm -rf /root/.opencode
+
 # Pinned so every rebuild gets the same uv.
 COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /uvx /bin/
 
