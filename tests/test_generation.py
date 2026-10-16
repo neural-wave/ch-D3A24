@@ -168,3 +168,32 @@ def test_best_input_is_the_selectors_first_choice(dataset: Path) -> None:
     reversed_selector = lambda photos: tuple(reversed(photos))  # noqa: E731
     chosen = select_inputs(item, InputSelection.BEST, get_model("flux-2"), reversed_selector)
     assert [path.name for path in chosen] == ["input_3.jpg"]
+
+
+def test_grey_card_removes_a_warm_cast() -> None:
+    np = pytest.importorskip("numpy")
+    from zir_image_enhancer.preprocess.white_balance import CardSettings, GreyCardBalancer
+
+    # A warm scene: grey card and backdrop both pushed towards orange.
+    pixels = np.full((400, 600, 3), (200, 170, 140), dtype=np.uint8)
+    pixels[150:250, 200:400] = (40, 90, 160)  # the garment
+    pixels[330:390, 530:590] = (150, 120, 90)  # the card, bottom-right
+    balancer = GreyCardBalancer(CardSettings(corner="bottom-right", size=0.15, inset=0.02))
+    result = balancer.balance(Image.fromarray(pixels))
+    assert result.applied
+    card = (
+        np.asarray(
+            GreyCardBalancer(CardSettings(cover=False)).balance(Image.fromarray(pixels)).image
+        )[350:370, 550:570]
+        .reshape(-1, 3)
+        .mean(axis=0)
+    )
+    assert card.max() - card.min() < 4  # neutral after balancing
+
+
+def test_grey_card_left_alone_when_no_card() -> None:
+    np = pytest.importorskip("numpy")
+    from zir_image_enhancer.preprocess.white_balance import GreyCardBalancer
+
+    noise = np.random.default_rng(0).integers(0, 255, (300, 300, 3), dtype=np.uint8)
+    assert not GreyCardBalancer().balance(Image.fromarray(noise)).applied

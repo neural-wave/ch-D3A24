@@ -49,6 +49,24 @@ _SARTIQ_STYLE_V2 = (
     "accessories, other garments, text or watermarks."
 )
 
+# For photos that already follow our capture protocol (garment laid flat, shot from above,
+# colour balanced with a grey card). The model is asked to change as little as possible:
+# keep the layout and colours it sees, only clean the scene and the light. Less to invent
+# means fewer hallucinated details and colour drift.
+_SARTIQ_FLAT_V1 = (
+    "The {source} already shows this garment laid flat and shot from above, with correct "
+    "colours. {references}"
+    "Turn it into a fashion catalogue packshot while changing as little as possible: keep the "
+    "garment's layout, shape, proportions, exact colours, fabric texture, pattern, print, "
+    "logos and small details as they are. Only straighten the perspective so it is seen "
+    "exactly from above, centre it, smooth small wrinkles, tidy the collar, close buttons and "
+    "zips if they are open, and make the light soft and even. Replace the surface under it "
+    "with a plain light-grey studio background (RGB 240,240,240) with no cast shadow, and "
+    "remove any card, tag, label, hand or object around it. The whole garment stays visible "
+    "with a margin on every side, in a portrait frame. Never add accessories, other garments, "
+    "text or watermarks."
+)
+
 _MULTI_REFERENCES = (
     "All {count} photos show the same single garment: the first is the main view, the others "
     "are other angles or close-ups. Use all of them to understand the garment, and output one "
@@ -59,6 +77,7 @@ TEMPLATES: dict[str, str] = {
     "baseline": _BASELINE,
     "studio-white-v1": _STUDIO_WHITE_V1,
     "sartiq-style-v2": _SARTIQ_STYLE_V2,
+    "sartiq-flat-v1": _SARTIQ_FLAT_V1,
 }
 
 

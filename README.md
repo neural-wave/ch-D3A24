@@ -97,6 +97,24 @@ What it does for each garment:
 
 Cost: about $0.06 per garment. Results are cached by content, so reruns are free.
 
+## Running on our own captures (test day)
+
+1. Shoot each garment following the capture protocol: garment laid flat on the backdrop, phone straight above, one soft light, grey card (or white paper) in the **bottom-right** corner, the front photo first.
+2. Copy the photos to `local/captures/<garment_id>/` (for example `local/captures/g01/01_front.jpg`). Name them so the front sorts first. HEIC is converted automatically.
+3. Build the manifest and run the pipeline on it. The output goes to the same submission folder, with the official ids:
+
+```bash
+python scripts/make_capture_manifest.py --photos local/captures
+```
+
+```bash
+python scripts/run_pipeline.py --split test --captures local/captures/inputs.jsonl --wb-card bottom-right --prompt sartiq-flat-v1 --run test_captures --dry-run
+```
+
+- `--wb-card <corner>` measures the card, removes the colour cast (in linear light, brightness kept) and paints the card out before generation.
+- `--prompt sartiq-flat-v1` tells the model the photo is already a flat-lay with correct colours and asks it to change as little as possible.
+- Without `--captures`, the pipeline uses the photos supplied by the organisers.
+
 ## Generation experiments
 
 Run from the repo root. Always dry-run first: it prints the number of calls and the cost.
@@ -124,6 +142,7 @@ python scripts/contact_sheet.py --run holdout_nb21_baseline --split holdout
 - `--preprocess cutout|crop|denoise` changes the photo before it is sent (see findings: all three hurt).
 - `--inputs filtered` keeps only full front views, chosen by local CLIP (`preprocess/photo_filter.py`); it drops tags, barcodes, bags and close-ups.
 - `--manifest <file>` runs on any manifest; `score_run.py --pairs <file>` scores against it.
+- `select_capture_style.py` writes the pairs whose first photo looks like a given capture style (flat, hanger, mannequin, worn, studio).
 - `cutout_run.py` makes zero-cost runs without generation (cut-out of the input, or re-framing of a generation run).
 
 ## Findings so far (holdout, 38 pairs grouped by target)
@@ -173,6 +192,9 @@ What we learned (official dev numbers: identity 48.37, one-shot baseline 68.71):
   | Most "front-looking" photo by CLIP (`best`) | 61.19 | **61.19** |
 
   `best` does not depend on the order, but on the test set it picked the back for 5 of 15 garments (CLIP cannot tell the front of a hanging garment from its back; g12's back has a large print). So the pipeline uses `first-usable`: the capture protocol says photo 1 is the front, and CLIP only protects against a tag or bag being first. A better front/back check would remove the dependence on order.
+- **Prompt for flat-lay captures.** On the 22 holdout-train pairs whose first photo is a flat-lay (picked by CLIP, checked by eye), `sartiq-flat-v1` scores 61.29 against 60.74 for `sartiq-style-v2` (+0.54, 11 of 22 wins, within noise) with better texture (LPIPS 0.373 vs 0.349). It is the prompt for our own flat-lay captures.
+- **No stable colour bias to correct.** An average offset learned on 43 train outputs (studio photos about 1.9 L* brighter than our outputs) is the opposite of what the holdout showed earlier (outputs 2.5 L* brighter). Applying it to the holdout lowers the score by 0.6 to 1.2 (clearly negative). Post-generation colour tweaks are out.
+- **Grey-card white balance cannot be measured on the dataset** (no photo has a card). It is in the pipeline as `--wb-card` and is judged on our own captures against the physical garment.
 
 ## Optional dependency groups
 

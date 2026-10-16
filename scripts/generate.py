@@ -60,11 +60,18 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--preprocess",
         default="none",
-        choices=["none", "cutout", "crop", "denoise"],
+        choices=["none", "cutout", "crop", "denoise", "wb-card"],
         help=(
             "cutout: garment cut out on white; crop: framed around the garment, real "
-            "background kept (both upscale small photos); denoise: mild OpenCV denoise."
+            "background kept (both upscale small photos); denoise: mild OpenCV denoise; "
+            "wb-card: white balance from a grey card in a fixed corner, card painted out."
         ),
+    )
+    parser.add_argument(
+        "--wb-corner",
+        default="bottom-right",
+        choices=["top-left", "top-right", "bottom-left", "bottom-right"],
+        help="corner that holds the grey card (with --preprocess wb-card)",
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="print the plan and cost, call nothing"
@@ -72,7 +79,9 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def build_preprocessor(name: str, paths: ProjectPaths) -> Callable[[Path], Path] | None:
+def build_preprocessor(
+    name: str, paths: ProjectPaths, wb_corner: str = "bottom-right"
+) -> Callable[[Path], Path] | None:
     # Heavy dependencies are imported only when the option is used, so plain runs do not
     # need rembg, OpenCV or torch installed.
     cache_dir = paths.repo_root / "local" / "preprocessed"
@@ -82,6 +91,10 @@ def build_preprocessor(name: str, paths: ProjectPaths) -> Callable[[Path], Path]
         from zir_image_enhancer.preprocess.denoise import Denoiser
 
         return Denoiser(cache_dir=cache_dir).denoise_file
+    if name == "wb-card":
+        from zir_image_enhancer.preprocess.white_balance import CardSettings, GreyCardBalancer
+
+        return GreyCardBalancer(CardSettings(corner=wb_corner), cache_dir=cache_dir).balance_file
 
     from zir_image_enhancer.preprocess.cutout import CutoutSettings, GarmentCutter
 
@@ -146,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     budget = float(os.environ.get("ZIR_FAL_BUDGET_USD", DEFAULT_BUDGET_USD))
     ledger = CostLedger(paths.fal_ledger)
-    preprocessor = build_preprocessor(args.preprocess, paths)
+    preprocessor = build_preprocessor(args.preprocess, paths, args.wb_corner)
     photo_selector = build_photo_selector(args.inputs)
 
     if args.dry_run:

@@ -46,6 +46,21 @@ def main(argv: list[str] | None = None) -> int:
             "photo is always the back, which can leak a back print onto the front)"
         ),
     )
+    parser.add_argument(
+        "--captures",
+        type=Path,
+        default=None,
+        help="manifest of our own photos (make_capture_manifest.py) instead of the supplied ones",
+    )
+    parser.add_argument(
+        "--prompt", default=DEFAULT_PROMPT, help="e.g. sartiq-flat-v1 for flat-lay captures"
+    )
+    parser.add_argument(
+        "--wb-card",
+        default=None,
+        choices=["top-left", "top-right", "bottom-left", "bottom-right"],
+        help="white balance from the grey card in this corner before generation",
+    )
     parser.add_argument("--dry-run", action="store_true", help="show the plan and cost only")
     args = parser.parse_args(argv)
 
@@ -54,12 +69,17 @@ def main(argv: list[str] | None = None) -> int:
     generate_args = [
         "--split", args.split,
         "--model", DEFAULT_MODEL,
-        "--prompt", DEFAULT_PROMPT,
+        "--prompt", args.prompt,
         "--inputs", inputs,
         "--seed-base", str(DEFAULT_SEED),
         "--workers", str(args.workers),
         "--run", run_name,
     ]  # fmt: skip
+    if args.captures is not None:
+        # The garment ids stay the official ones (g01..g15), so export works unchanged.
+        generate_args += ["--manifest", str(args.captures)]
+    if args.wb_card is not None:
+        generate_args += ["--preprocess", "wb-card", "--wb-corner", args.wb_card]
     if args.dry_run:
         run_step("generate.py", [*generate_args, "--dry-run"])
         return 0
