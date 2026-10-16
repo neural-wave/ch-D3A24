@@ -6,8 +6,7 @@
     },
     // The GPU is used when the host has one; otherwise the container still starts (CPU only).
     "runArgs": [
-        "--shm-size=8g",
-        "--device=nvidia.com/gpu=all"
+        "--shm-size=8g"
     ],
     // Model weights and the uv cache live in a Docker volume, outside the repo:
     // they survive rebuilds, never end up in Git, and load fast on Windows.
