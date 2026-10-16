@@ -1,0 +1,52 @@
+{
+    "name": "Zir Image Enhancer",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    // The GPU is used when the host has one; otherwise the container still starts (CPU only).
+    "runArgs": [
+        "--shm-size=8g",
+        "--device=nvidia.com/gpu=all"
+    ],
+    // Model weights and the uv cache live in a Docker volume, outside the repo:
+    // they survive rebuilds, never end up in Git, and load fast on Windows.
+    "mounts": [
+        "source=zir-model-cache,target=/root/.cache,type=volume"
+    ],
+    "containerEnv": {
+        "GRADIO_SERVER_NAME": "0.0.0.0",
+        "GRADIO_SERVER_PORT": "7860"
+    },
+    "forwardPorts": [
+        7860
+    ],
+    "portsAttributes": {
+        "7860": {
+            "label": "Gradio Live Demo",
+            "onAutoForward": "notify"
+        }
+    },
+    // Dependencies are already in the image; this only links our own package in editable mode.
+    "postCreateCommand": "uv pip install --system --no-deps -e .",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "charliermarsh.ruff"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/opt/conda/bin/python",
+                "[python]": {
+                    "editor.defaultFormatter": "charliermarsh.ruff",
+                    "editor.formatOnSave": true,
+                    "editor.codeActionsOnSave": {
+                        "source.organizeImports.ruff": "explicit"
+                    }
+                }
+            }
+        }
+    },
+    "remoteUser": "root"
+}

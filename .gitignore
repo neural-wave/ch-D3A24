@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# Tool caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Model weights and caches (downloaded at runtime, never committed)
+.cache/
+weights/
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+*.onnx
+*.gguf
+
+# Data and outputs
+data/
+outputs/
+runs/
+*.log
+
+# Gradio
+.gradio/
+flagged/
+
+# Editors and OS
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+local/

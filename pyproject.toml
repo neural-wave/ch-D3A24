@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zir-image-enhancer"
+version = "0.1.0"
+description = "A local, explainable AI pipeline that turns smartphone product photos into studio shots."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # torch and torchvision already come with the base image (CUDA build).
+    # Listing them documents the expected version; uv sees them installed and skips them.
+    "torch>=2.9,<2.10",
+    "torchvision>=0.24,<0.25",
+    "gradio>=6.30.0",
+    "numpy>=1.26.0",
+    "opencv-python-headless>=4.10.0",
+    "pillow>=10.4.0",
+    "pillow-heif>=0.18.0",        # iPhone photos arrive as HEIC
+    "scikit-image>=0.24.0",       # noise estimation when EXIF has no ISO
+    "spandrel>=0.4.0",
+    "spandrel_extra_arches>=0.2.0",
+    "safetensors>=0.4.5",
+    "kornia>=0.7.3",
+    "transformers>=4.46.0",       # BiRefNet loads through transformers
+    "timm>=1.0.0",                # required by BiRefNet
+    "einops>=0.8.0",              # required by BiRefNet and several Spandrel archs
+    "huggingface-hub>=0.26.0",
+    "pydantic>=2.9.0",
+]
+
+[project.optional-dependencies]
+# Only needed for the optional "creative mode" (one-step diffusion SR, relighting).
+generative = [
+    "diffusers>=0.31.0",
+    "accelerate>=1.1.0",
+]
+# Metrics and plots for the evaluation tables.
+eval = [
+    "pyiqa>=0.1.13",
+    "pandas>=2.2.0",
+    "matplotlib>=3.8.0",
+]
+dev = [
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+    "pre-commit>=4.0.0",
+]
+
+[project.scripts]
+zir-app = "zir_image_enhancer.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# ANN enforces type hints on every function, which is the team convention.
+select = ["E", "F", "W", "I", "B", "UP", "ANN"]
+ignore = ["ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]
+
+[tool.mypy]
+python_version = "3.11"
+disallow_untyped_defs = true
+warn_unused_ignores = true
+# Most ML libraries ship without type stubs; without this, mypy fails on every import.
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
