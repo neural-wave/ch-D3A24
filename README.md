@@ -57,6 +57,58 @@ A Vast.ai instance is already a container, so the Dev Container itself is not us
 
 4. Start the app inside `tmux` so it survives SSH disconnects. Use `share=True` in `demo.launch()` (or a Cloudflare tunnel) to get the HTTPS link phones need for the camera.
 
+## Local layout
+
+Everything under `local/` and `data/` is ignored by Git:
+
+```
+data/sartiq_neural_wave_2026/   the dataset (never committed, delete after the event)
+local/neural-wave-2026/         the official starter repo, with its own .venv for the scorer
+local/runs/<run>/               generation runs (candidates, scores, contact sheets)
+local/fal_cache/                every paid fal result, so nothing is paid twice
+local/fal_ledger.jsonl          one line per paid call; the budget guard reads it
+```
+
+Copy `.env.example` to `.env` and fill in `FAL_KEY`.
+
+The holdout comes from the starter repo, created once from `local/neural-wave-2026`:
+
+```bash
+.venv/Scripts/python.exe scripts/make_holdout.py --pairs ../../data/sartiq_neural_wave_2026/train/pairs.jsonl --frac 0.1 --seed 0 --out holdout --group-by-target
+```
+
+## Generation experiments
+
+Run from the repo root. Always dry-run first: it prints the number of calls and the cost.
+
+```bash
+python scripts/generate.py --split holdout --model nano-banana-2.1 --prompt baseline --inputs first --run holdout_nb21_baseline --dry-run
+```
+
+```bash
+python scripts/generate.py --split holdout --model nano-banana-2.1 --prompt baseline --inputs first --run holdout_nb21_baseline
+```
+
+```bash
+python scripts/score_run.py --run holdout_nb21_baseline
+```
+
+```bash
+python scripts/contact_sheet.py --run holdout_nb21_baseline --split holdout
+```
+
+- `generate.py` writes `local/runs/<run>/cand_<k>/<id>/front.png`; `--samples K` gives K candidates per garment, `--inputs all` sends every photo of the garment.
+- `score_run.py` scores each candidate with the official scorer and appends one row to `experiments/results.csv`, including `best_of_k` (the score if we always picked the best candidate).
+- Spending stops at `ZIR_FAL_BUDGET_USD` (default $70, counted in `local/fal_ledger.jsonl`).
+- Models: `nano-banana-2.1` (official baseline), `nano-banana-pro`, `flux-2`, `seedream-4.5`. Prompts: `baseline` (official), `studio-white-v1`.
+
+Reference scores on our holdout (38 pairs, grouped by target):
+
+| Config | Holdout | Dev (official) |
+|---|---|---|
+| identity (input unchanged) | 39.78 | 48.37 |
+| official one-shot baseline | to run | 68.71 |
+
 ## Optional dependency groups
 
 All groups are installed in the image. If you install outside the container:
