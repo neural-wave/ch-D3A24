@@ -34,7 +34,20 @@ MODELS: dict[str, ModelSpec] = {
     spec.key: spec
     for spec in (
         # The official baseline model (about $0.06 per edit according to the organisers).
-        ModelSpec("nano-banana-2.1", "google/nano-banana-2.1/edit", 14, 0.06, False),
+        # Its web search option stays off (the default): retrieving product images is
+        # against the rules and disqualifies the garment.
+        ModelSpec("nano-banana-2.1", "google/nano-banana-2.1/edit", 14, 0.06, True),
+        # Same model with a portrait canvas like the targets (about 2:3). With "auto" it
+        # keeps the input's aspect, and landscape inputs came back as wide, spread-out
+        # garments that lost silhouette IoU against the narrow targets.
+        ModelSpec(
+            "nano-banana-2.1-portrait",
+            "google/nano-banana-2.1/edit",
+            14,
+            0.06,
+            True,
+            {"aspect_ratio": "2:3"},
+        ),
         ModelSpec("nano-banana-pro", "fal-ai/nano-banana-pro/edit", 14, 0.15, False),
         ModelSpec("flux-2", "fal-ai/flux-2/edit", 9, 0.05, True),
         ModelSpec("seedream-4.5", "fal-ai/bytedance/seedream/v4.5/edit", 10, 0.05, True),

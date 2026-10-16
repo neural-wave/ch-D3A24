@@ -1,0 +1,2 @@
+at,run,model,prompt,inputs,samples,pairs,score,colour,lpips,clip,geometry,ssim,best_of_k,usd_per_garment,s_per_call
+2026-10-16T20:14+00:00,holdout_nb21_baseline,nano-banana-2.1,baseline,first,1,38,60.22,0.6074,0.3532,0.7321,0.836,0.7147,60.22,0.06,14.2

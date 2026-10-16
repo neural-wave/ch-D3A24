@@ -93,7 +93,7 @@ def test_cache_key_depends_on_sample_and_image_bytes(dataset: Path) -> None:
 
 
 def test_seed_only_sent_to_models_that_take_it() -> None:
-    assert "seed" not in get_model("nano-banana-2.1").build_arguments("p", ["u"], 7)
+    assert "seed" not in get_model("nano-banana-pro").build_arguments("p", ["u"], 7)
     assert get_model("flux-2").build_arguments("p", ["u"], 7)["seed"] == 7
 
 

@@ -100,14 +100,14 @@ python scripts/contact_sheet.py --run holdout_nb21_baseline --split holdout
 - `generate.py` writes `local/runs/<run>/cand_<k>/<id>/front.png`; `--samples K` gives K candidates per garment, `--inputs all` sends every photo of the garment.
 - `score_run.py` scores each candidate with the official scorer and appends one row to `experiments/results.csv`, including `best_of_k` (the score if we always picked the best candidate).
 - Spending stops at `ZIR_FAL_BUDGET_USD` (default $70, counted in `local/fal_ledger.jsonl`).
-- Models: `nano-banana-2.1` (official baseline), `nano-banana-pro`, `flux-2`, `seedream-4.5`. Prompts: `baseline` (official), `studio-white-v1`.
+- Models: `nano-banana-2.1` (official baseline), `nano-banana-2.1-portrait` (2:3 canvas), `nano-banana-pro`, `flux-2`, `seedream-4.5`. Prompts: `baseline` (official), `studio-white-v1`.
 
 Reference scores on our holdout (38 pairs, grouped by target):
 
 | Config | Holdout | Dev (official) |
 |---|---|---|
 | identity (input unchanged) | 39.78 | 48.37 |
-| official one-shot baseline | to run | 68.71 |
+| official one-shot baseline (nano-banana-2.1, first photo) | 60.22 | 68.71 |
 
 ## Optional dependency groups
 
