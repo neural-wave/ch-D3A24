@@ -32,6 +32,12 @@ class InputSelection(Enum):
     FIRST = "first"  # what the official baseline does
     ALL = "all"  # every photo of the garment, up to the model's reference limit
     FILTERED = "filtered"  # only full front views, chosen by the photo filter
+    # The single clearest front view, wherever it is in the list. Same cost as FIRST, but it
+    # does not depend on the photos arriving in a convenient order.
+    BEST = "best"
+    # The first photo that is a whole garment, skipping tags, bags and close-ups. The order
+    # still decides front versus back, which CLIP cannot tell apart on hanging garments.
+    FIRST_USABLE = "first-usable"
 
 
 @dataclass(frozen=True)
@@ -71,10 +77,12 @@ def select_inputs(
 ) -> tuple[Path, ...]:
     if selection is InputSelection.FIRST:
         return item.inputs[:1]
-    if selection is InputSelection.FILTERED:
+    if selection in (InputSelection.FILTERED, InputSelection.BEST, InputSelection.FIRST_USABLE):
         if photo_selector is None:
-            raise ValueError("inputs=filtered needs a photo selector")
-        return photo_selector(item.inputs)[: model.max_references]
+            raise ValueError(f"inputs={selection.value} needs a photo selector")
+        # The selector returns full front views, clearest first.
+        limit = model.max_references if selection is InputSelection.FILTERED else 1
+        return photo_selector(item.inputs)[:limit]
     return item.inputs[: model.max_references]
 
 

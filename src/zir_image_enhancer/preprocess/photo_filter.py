@@ -77,3 +77,22 @@ class PhotoFilter:
             # Never send zero photos: fall back to the one that looks most like a front view.
             kept = [ranked[0].path]
         return FilterDecision(tuple(kept), verdicts)
+
+    def first_usable(self, photos: Sequence[Path]) -> FilterDecision:
+        """The first photo, in the given order, that shows a whole garment.
+
+        CLIP cannot reliably tell the front of a hanging garment from its back (on the
+        test set it picked the back for 5 of 15 garments), but it does spot tags, bags and
+        close-ups. So the photo order decides front versus back, and CLIP only skips the
+        photos that are clearly not a full view.
+        """
+        if len(photos) <= 1:
+            return FilterDecision(tuple(photos), ())
+        verdicts: list[PhotoVerdict] = []
+        for path in photos:
+            verdict = self.classify(path)
+            verdicts.append(verdict)
+            if verdict.label in ("front", "back"):
+                return FilterDecision((path,), tuple(verdicts))
+        best = max(verdicts, key=lambda v: v.front_probability)
+        return FilterDecision((best.path,), tuple(verdicts))

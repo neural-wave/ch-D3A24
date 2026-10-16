@@ -95,7 +95,12 @@ def build_preprocessor(name: str, paths: ProjectPaths) -> Callable[[Path], Path]
 
 
 def build_photo_selector(inputs: str) -> PhotoSelector | None:
-    if inputs != InputSelection.FILTERED.value:
+    modes = {
+        InputSelection.FILTERED.value: "select",
+        InputSelection.BEST.value: "select",
+        InputSelection.FIRST_USABLE.value: "first_usable",
+    }
+    if inputs not in modes:
         return None
     from zir_image_enhancer.preprocess.photo_filter import PhotoFilter
 
@@ -106,7 +111,7 @@ def build_photo_selector(inputs: str) -> PhotoSelector | None:
         # plan() runs more than once per run (cost estimate, then execution); remember
         # each decision so CLIP runs once per garment and the log is printed once.
         if photos not in decisions:
-            decision = photo_filter.select(photos)
+            decision = getattr(photo_filter, modes[inputs])(photos)
             decisions[photos] = decision.kept
             for verdict in decision.verdicts:
                 mark = "keep" if verdict.path in decision.kept else "drop"

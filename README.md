@@ -91,7 +91,7 @@ python scripts/run_pipeline.py --split dev
 
 What it does for each garment:
 
-1. Takes only the first photo of the garment. On multi-photo train pairs, sending every photo or a CLIP-filtered set scored slightly lower; on test the second supplied photo is always the back, which can leak a back print onto the front. `--inputs all|filtered` are still available.
+1. Picks one photo: the first one that shows the whole garment, skipping tags, barcodes, bags and close-ups with local CLIP (`--inputs first-usable`). The photo order decides front versus back, because CLIP cannot tell them apart on hanging garments. Sending more photos scored lower (see findings). `--inputs first|best|all|filtered` are still available.
 2. Sends them to nano-banana 2.1 (fal) on a 2:3 portrait canvas with the `sartiq-style-v2` prompt: Sartiq's catalogue style written as rules per garment type (sleeves down along the body, closures done up, trouser legs straight and parallel, light-grey background, whole garment visible).
 3. Converts the result to PNG and exports it in the official layout, then runs the official validator.
 
@@ -163,7 +163,16 @@ What we learned (official dev numbers: identity 48.37, one-shot baseline 68.71):
   | All photos | 60.71 | -0.76, 20 of 43 wins |
   | CLIP-filtered (no tags, bags, close-ups) | 60.83 | -0.63, 18 of 43 wins |
 
-  The differences are within noise, but none beats the first photo, which is also the cheapest. The pipeline now sends the first photo only.
+  The differences are within noise, but none beats the first photo, which is also the cheapest.
+- **Choosing the single photo: order matters more than it should.** Same 43 pairs, also with the photos shuffled into a random order (the first photo changes in 33 of 43):
+
+  | Policy | Original order | Shuffled order |
+  |---|---|---|
+  | First photo (`first`) | **61.46** | 60.22 |
+  | First photo that is a whole garment (`first-usable`, pipeline) | **61.46** | 60.30 |
+  | Most "front-looking" photo by CLIP (`best`) | 61.19 | **61.19** |
+
+  `best` does not depend on the order, but on the test set it picked the back for 5 of 15 garments (CLIP cannot tell the front of a hanging garment from its back; g12's back has a large print). So the pipeline uses `first-usable`: the capture protocol says photo 1 is the front, and CLIP only protects against a tag or bag being first. A better front/back check would remove the dependence on order.
 
 ## Optional dependency groups
 
