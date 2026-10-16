@@ -46,6 +46,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=None, help="only the first N garments")
     parser.add_argument("--ids", nargs="*", default=None, help="only these item ids")
     parser.add_argument("--run", required=True, help="run name; outputs go to local/runs/<run>/")
+    parser.add_argument("--workers", type=int, default=4, help="parallel fal calls")
     parser.add_argument(
         "--dry-run", action="store_true", help="print the plan and cost, call nothing"
     )
@@ -90,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
 
     generator = FalGenerator(cache_dir=paths.fal_cache, ledger=ledger, budget_usd=budget)
     run = GenerationRun(config, generator, paths.runs_root)
-    summary = run.execute(items)
+    summary = run.execute(items, workers=args.workers)
     print(
         f"done: {summary.generated} generated, {summary.from_cache} from cache, "
         f"{summary.failed} failed, ${summary.cost_usd:.2f}, {summary.seconds:.0f}s"

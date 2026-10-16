@@ -130,6 +130,18 @@ def test_run_writes_scorer_layout_and_respects_input_selection(
     assert [call.seed for call in fake.calls] == [10, 11]
 
 
+def test_parallel_run_writes_every_candidate(dataset: Path, tmp_path: Path) -> None:
+    items = load_manifest(dataset / "dev/inputs.jsonl", dataset)
+    fake = FakeGenerator()
+    config = RunConfig("parallel", "flux-2", "studio-white-v1", InputSelection.FIRST, samples=4)
+    summary = GenerationRun(config, fake, tmp_path / "runs").execute(items, workers=3)
+
+    assert summary.generated == 4
+    meta_lines = (tmp_path / "runs/parallel/meta.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(meta_lines) == 4
+    assert all((tmp_path / f"runs/parallel/cand_{k}/d001/front.png").exists() for k in range(4))
+
+
 def test_to_png_flattens_transparency_onto_white() -> None:
     buffer = io.BytesIO()
     Image.new("RGBA", (4, 4), (0, 0, 0, 0)).save(buffer, format="PNG")

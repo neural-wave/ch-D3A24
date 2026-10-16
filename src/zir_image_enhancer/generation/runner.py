@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
@@ -90,8 +91,9 @@ class GenerationRun:
         """Upper bound: assumes nothing is cached yet."""
         return len(self.plan(items)) * self._model.est_cost_usd
 
-    def execute(self, items: list[GarmentItem]) -> RunSummary:
-        if self._generator is None:
+    def execute(self, items: list[GarmentItem], workers: int = 1) -> RunSummary:
+        generator = self._generator
+        if generator is None:
             raise RuntimeError(
                 "This run was built for planning only; pass a generator to execute it."
             )
@@ -104,8 +106,17 @@ class GenerationRun:
         started = time.perf_counter()
         stopped_by_budget = False
 
+        # Each call spends most of its time waiting on fal's queue, so a few threads cut
+        # the wall time almost linearly. Files and meta.jsonl are only written from this
+        # thread, so they never interleave.
+        executor = ThreadPoolExecutor(max_workers=max(1, workers))
+        futures = {
+            executor.submit(generator.generate, request): (item, request)
+            for item, request in self.plan(items)
+        }
         with (self._run_dir / "meta.jsonl").open("a", encoding="utf-8") as meta:
-            for item, request in self.plan(items):
+            for future in as_completed(futures):
+                item, request = futures[future]
                 entry: dict[str, object] = {
                     "item_id": item.item_id,
                     "sample": request.sample,
@@ -114,14 +125,18 @@ class GenerationRun:
                     "seed": request.seed,
                     "inputs": [path.name for path in request.images],
                 }
+                if future.cancelled():
+                    continue
                 try:
-                    result = self._generator.generate(request)
+                    result = future.result()
                 except BudgetExceededError as error:
                     # Stop the whole run: every later call would be refused anyway.
                     entry["error"] = str(error)
                     meta.write(json.dumps(entry) + "\n")
+                    if not stopped_by_budget:
+                        executor.shutdown(wait=False, cancel_futures=True)
                     stopped_by_budget = True
-                    break
+                    continue
                 except Exception as error:  # noqa: BLE001
                     # One failed garment must not kill a batch; it is logged and skipped,
                     # like the official baseline does.
@@ -153,6 +168,7 @@ class GenerationRun:
                     f"  {item.item_id} sample {request.sample}: "
                     f"{'cache' if result.from_cache else f'{result.seconds:.1f}s'}"
                 )
+        executor.shutdown(wait=True)
 
         return RunSummary(
             generated=generated,

@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import threading
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -74,20 +75,24 @@ class CostLedger:
 
     def __init__(self, path: Path) -> None:
         self._path = path
+        # Runs call the generator from several threads; the lock keeps lines whole.
+        self._lock = threading.Lock()
 
     def spent_usd(self) -> float:
-        if not self._path.exists():
-            return 0.0
-        total = 0.0
-        for line in self._path.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                total += float(json.loads(line).get("cost_usd", 0.0))
-        return total
+        with self._lock:
+            if not self._path.exists():
+                return 0.0
+            total = 0.0
+            for line in self._path.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    total += float(json.loads(line).get("cost_usd", 0.0))
+            return total
 
     def record(self, entry: dict[str, object]) -> None:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        with self._path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(entry, sort_keys=True) + "\n")
+        with self._lock:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            with self._path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(entry, sort_keys=True) + "\n")
 
 
 def to_png_bytes(data: bytes) -> bytes:
@@ -129,6 +134,8 @@ class FalGenerator:
         if cached.exists():
             return GenerationResult(request, cached.read_bytes(), True, 0.0, 0.0)
 
+        # With parallel workers a few calls can pass this check at the same time, so the
+        # limit can be crossed by at most (workers x one call); keep the limit below $100.
         spent = self._ledger.spent_usd()
         if spent + request.model.est_cost_usd > self._budget_usd:
             raise BudgetExceededError(
