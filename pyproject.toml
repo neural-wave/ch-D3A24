@@ -28,6 +28,9 @@ dependencies = [
     "einops>=0.8.0",              # required by BiRefNet and several Spandrel archs
     "huggingface-hub>=0.26.0",
     "pydantic>=2.9.0",
+    "fal-client>=1.0.0",          # hosted generation (FAL_KEY)
+    "httpx>=0.27.0",              # downloads fal results; already a fal-client dependency
+    "python-dotenv>=1.0.0",       # reads FAL_KEY and path overrides from .env
 ]
 
 [project.optional-dependencies]
@@ -77,10 +80,10 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["src", "tests"]
+src = ["src", "tests", "scripts"]
 # Vendored, unmodified code from the Neural Wave 2026 starter repo (see README):
 # keep it byte-identical to upstream rather than reformatting it.
-extend-exclude = ["tools", "scripts"]
+extend-exclude = ["tools", "scripts/eval_val.py", "scripts/make_holdout.py", "scripts/make_submission.py", "local", "data"]
 
 [tool.ruff.lint]
 # ANN enforces type hints on every function, which is the team convention.
@@ -99,5 +102,6 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
 # Never collect the vendored upstream code or generated run outputs.
 norecursedirs = ["tools", "scripts", ".venv", "local", "data", "holdout", "submissions", "predictions", "val_*"]
