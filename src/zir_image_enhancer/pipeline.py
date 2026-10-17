@@ -1,9 +1,9 @@
 """Studio pipeline: phone photos of one product in, one studio packshot out.
 
 ``StudioPipeline`` is the single seam shared by the Gradio app (``app.py``) and the batch
-runner (``cli.py`` / ``zir-run``). It runs the reconstruction harness: garment spec (vision),
-studio prompt with geometry, flattening and details, named detail photos, and a quality
-gate with one repair.
+runner (``cli.py`` / ``zir-run``). It runs the reconstruction harness in one of its three
+versions (v3 "jury" by default: one-shot, jury gate, then an edit or a redraw only for the
+garments with defects; see ``reconstruction/reconstructor.py``).
 """
 
 from __future__ import annotations
