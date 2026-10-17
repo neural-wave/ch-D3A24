@@ -1,8 +1,7 @@
-"""Choose which photos of a garment go to the edit model (local CLIP, no cost).
+"""Fallback photo choice when the vision triage fails (local CLIP, no cost).
 
-Phone sets often include price tags, care labels, a garment still in its bag, close-ups
-and the back. Those photos give the model nothing for the front packshot and invite it to
-copy a tag or a back print, so only full views are kept, best front view first.
+Phone sets often include price tags, care labels, a garment still in its bag and close-ups.
+Those photos give the model nothing for the front packshot, so the first whole view is used.
 """
 
 from __future__ import annotations
@@ -24,7 +23,6 @@ _LABELS: dict[str, str] = {
     "packaging": "a photo of a folded garment inside a plastic bag",
     "detail": "a close-up photo of fabric texture, a seam or a button",
 }
-_KEEP = ("front",)
 
 
 @dataclass(frozen=True)
@@ -41,8 +39,7 @@ class FilterDecision:
 
 
 class PhotoFilter:
-    def __init__(self, max_photos: int = 3, device: str = "cpu") -> None:
-        self._max_photos = max_photos
+    def __init__(self, device: str = "cpu") -> None:
         self._device = device
         # The same CLIP the official scorer uses; it is already cached on most machines.
         model, _, preprocess = open_clip.create_model_and_transforms(
@@ -65,18 +62,6 @@ class PhotoFilter:
         labels = list(_LABELS)
         best = int(probabilities.argmax())
         return PhotoVerdict(path, labels[best], float(probabilities[labels.index("front")]))
-
-    def select(self, photos: Sequence[Path]) -> FilterDecision:
-        if len(photos) <= 1:
-            # Nothing to choose from; classifying would only cost time.
-            return FilterDecision(tuple(photos), ())
-        verdicts = tuple(self.classify(path) for path in photos)
-        ranked = sorted(verdicts, key=lambda v: v.front_probability, reverse=True)
-        kept = [v.path for v in ranked if v.label in _KEEP][: self._max_photos]
-        if not kept:
-            # Never send zero photos: fall back to the one that looks most like a front view.
-            kept = [ranked[0].path]
-        return FilterDecision(tuple(kept), verdicts)
 
     def first_usable(self, photos: Sequence[Path]) -> FilterDecision:
         """The first photo, in the given order, that shows a whole garment.

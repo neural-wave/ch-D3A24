@@ -154,20 +154,15 @@ def test_to_png_flattens_transparency_onto_white() -> None:
     assert pixel == (255, 255, 255)
 
 
-def test_filtered_inputs_use_the_selector_and_respect_model_limit(dataset: Path) -> None:
+def test_first_usable_is_the_selectors_first_choice(dataset: Path) -> None:
     item = load_manifest(dataset / "dev/inputs.jsonl", dataset)[0]
     reversed_selector = lambda photos: tuple(reversed(photos))  # noqa: E731
-    chosen = select_inputs(item, InputSelection.FILTERED, get_model("flux-2"), reversed_selector)
-    assert chosen[0].name == "input_3.jpg"
-    with pytest.raises(ValueError):
-        select_inputs(item, InputSelection.FILTERED, get_model("flux-2"))
-
-
-def test_best_input_is_the_selectors_first_choice(dataset: Path) -> None:
-    item = load_manifest(dataset / "dev/inputs.jsonl", dataset)[0]
-    reversed_selector = lambda photos: tuple(reversed(photos))  # noqa: E731
-    chosen = select_inputs(item, InputSelection.BEST, get_model("flux-2"), reversed_selector)
+    chosen = select_inputs(
+        item, InputSelection.FIRST_USABLE, get_model("flux-2"), reversed_selector
+    )
     assert [path.name for path in chosen] == ["input_3.jpg"]
+    with pytest.raises(ValueError):
+        select_inputs(item, InputSelection.FIRST_USABLE, get_model("flux-2"))
 
 
 def test_grey_card_removes_a_warm_cast() -> None:

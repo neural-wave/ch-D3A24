@@ -62,12 +62,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--preprocess",
         default="none",
-        choices=["none", "cutout", "crop", "denoise", "wb-card"],
-        help=(
-            "cutout: garment cut out on white; crop: framed around the garment, real "
-            "background kept (both upscale small photos); denoise: mild OpenCV denoise; "
-            "wb-card: white balance from a grey card in a fixed corner, card painted out."
-        ),
+        choices=["none", "wb-card"],
+        help="wb-card: white balance from a grey card in a fixed corner, card painted out.",
     )
     parser.add_argument(
         "--max-closeups",
@@ -98,33 +94,14 @@ def build_preprocessor(
     cache_dir = paths.repo_root / "local" / "preprocessed"
     if name == "none":
         return None
-    if name == "denoise":
-        from zir_image_enhancer.preprocess.denoise import Denoiser
+    # Cut-out, crop and denoise were removed: all three lowered the holdout score (README).
+    from zir_image_enhancer.preprocess.white_balance import CardSettings, GreyCardBalancer
 
-        return Denoiser(cache_dir=cache_dir).denoise_file
-    if name == "wb-card":
-        from zir_image_enhancer.preprocess.white_balance import CardSettings, GreyCardBalancer
-
-        return GreyCardBalancer(CardSettings(corner=wb_corner), cache_dir=cache_dir).balance_file
-
-    from zir_image_enhancer.preprocess.cutout import CutoutSettings, GarmentCutter
-
-    settings = CutoutSettings(
-        background=(255, 255, 255),
-        margin=0.08,
-        min_long_side=1024,
-        keep_background=(name == "crop"),
-    )
-    return GarmentCutter(settings, cache_dir=cache_dir).cut_file
+    return GreyCardBalancer(CardSettings(corner=wb_corner), cache_dir=cache_dir).balance_file
 
 
 def build_photo_selector(inputs: str) -> PhotoSelector | None:
-    modes = {
-        InputSelection.FILTERED.value: "select",
-        InputSelection.BEST.value: "select",
-        InputSelection.FIRST_USABLE.value: "first_usable",
-    }
-    if inputs not in modes:
+    if inputs != InputSelection.FIRST_USABLE.value:
         return None
     from zir_image_enhancer.preprocess.photo_filter import PhotoFilter
 
@@ -135,7 +112,7 @@ def build_photo_selector(inputs: str) -> PhotoSelector | None:
         # plan() runs more than once per run (cost estimate, then execution); remember
         # each decision so CLIP runs once per garment and the log is printed once.
         if photos not in decisions:
-            decision = getattr(photo_filter, modes[inputs])(photos)
+            decision = photo_filter.first_usable(photos)
             decisions[photos] = decision.kept
             for verdict in decision.verdicts:
                 mark = "keep" if verdict.path in decision.kept else "drop"

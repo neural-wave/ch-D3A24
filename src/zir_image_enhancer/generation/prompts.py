@@ -90,9 +90,6 @@ TEMPLATES: dict[str, str] = {
     # Generic studio catalogue conventions, written as text (no target pixels are ever used).
     "studio-style-v2": _STUDIO_STYLE_V2,
     "studio-flat-v1": _STUDIO_FLAT_V1,
-    # Old names, kept so earlier runs in experiments/results.csv can be reproduced.
-    "sartiq-style-v2": _STUDIO_STYLE_V2,
-    "sartiq-flat-v1": _STUDIO_FLAT_V1,
 }
 
 

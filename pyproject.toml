@@ -99,6 +99,8 @@ disallow_untyped_defs = true
 warn_unused_ignores = true
 # Most ML libraries ship without type stubs; without this, mypy fails on every import.
 ignore_missing_imports = true
+# The vendored starter scripts stay byte-identical to upstream, so they are not type-checked.
+exclude = ['scripts/(eval_val|make_holdout|make_submission)\.py$', '^tools/']
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

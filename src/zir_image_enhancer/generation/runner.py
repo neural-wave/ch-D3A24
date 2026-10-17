@@ -31,10 +31,6 @@ from zir_image_enhancer.generation.prompts import build_prompt
 class InputSelection(Enum):
     FIRST = "first"  # what the official baseline does
     ALL = "all"  # every photo of the garment, up to the model's reference limit
-    FILTERED = "filtered"  # only full front views, chosen by the photo filter
-    # The single clearest front view, wherever it is in the list. Same cost as FIRST, but it
-    # does not depend on the photos arriving in a convenient order.
-    BEST = "best"
     # The first photo that is a whole garment, skipping tags, bags and close-ups. The order
     # still decides front versus back, which CLIP cannot tell apart on hanging garments.
     FIRST_USABLE = "first-usable"
@@ -92,12 +88,10 @@ def select_inputs(
 ) -> tuple[Path, ...]:
     if selection is InputSelection.FIRST:
         return item.inputs[:1]
-    if selection in (InputSelection.FILTERED, InputSelection.BEST, InputSelection.FIRST_USABLE):
+    if selection is InputSelection.FIRST_USABLE:
         if photo_selector is None:
             raise ValueError(f"inputs={selection.value} needs a photo selector")
-        # The selector returns full front views, clearest first.
-        limit = model.max_references if selection is InputSelection.FILTERED else 1
-        return photo_selector(item.inputs)[:limit]
+        return photo_selector(item.inputs)[:1]
     return item.inputs[: model.max_references]
 
 
@@ -113,7 +107,7 @@ class GenerationRun:
     ) -> None:
         # generator can be None for planning only (dry runs), so no API key is needed.
         # preprocessor maps an input photo to the file actually sent (for example a cut-out);
-        # photo_selector decides which photos are sent for filtered/best/first-usable, and
+        # photo_selector decides which photo is sent for first-usable, and
         # triager does it (with detail close-ups) for inputs=triage.
         self._config = config
         self._generator = generator

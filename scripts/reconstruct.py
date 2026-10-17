@@ -4,7 +4,7 @@
     python scripts/reconstruct.py --split holdout --run holdout_recon_nogate --no-gate
 
 Writes local/runs/<run>/cand_0/<id>/front.png (scored by score_run.py) and
-local/runs/<run>/reports/<id>.json (spec, colours, references, prompts, gate results).
+local/runs/<run>/reports/<id>.json (spec, references, prompts, gate results).
 """
 
 from __future__ import annotations
@@ -20,7 +20,6 @@ from pathlib import Path
 from zir_image_enhancer.dataset import GarmentItem, load_manifest, split_manifest
 from zir_image_enhancer.generation.fal_backend import CostLedger, FalGenerator
 from zir_image_enhancer.paths import ProjectPaths
-from zir_image_enhancer.reconstruction.colour import ColourMeter
 from zir_image_enhancer.reconstruction.reconstructor import (
     ReconstructionResult,
     ReconstructionSettings,
@@ -33,7 +32,6 @@ def report(item: GarmentItem, result: ReconstructionResult) -> dict[str, object]
     return {
         "garment": item.item_id,
         "spec": result.spec.to_json(),
-        "colours": [asdict(c) for c in result.colours],
         "attempts": [
             {
                 "references": list(a.references),
@@ -58,13 +56,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", default="nano-banana-2.1-portrait")
     parser.add_argument(
         "--prompt-mode",
-        choices=["harness", "style", "spec"],
+        choices=["harness", "style"],
         default="harness",
         help="harness: studio prompt + spec geometry/light/details + named detail photos",
     )
     parser.add_argument("--no-gate", action="store_true")
-    parser.add_argument("--no-colours", action="store_true")
-    parser.add_argument("--no-crops", action="store_true")
     parser.add_argument("--no-detail-photos", action="store_true")
     parser.add_argument(
         "--relight", action="store_true", help="second pass that only fixes the studio light"
@@ -85,8 +81,6 @@ def main(argv: list[str] | None = None) -> int:
 
     settings = ReconstructionSettings(
         model_key=args.model,
-        use_colours=not args.no_colours,
-        use_crops=not args.no_crops,
         use_detail_photos=not args.no_detail_photos,
         gate=not args.no_gate,
         prompt_mode=args.prompt_mode,
@@ -97,9 +91,7 @@ def main(argv: list[str] | None = None) -> int:
     cache = paths.repo_root / "local" / "reconstruction_cache"
     vision = VisionClient(ledger, budget, cache)
     generator = FalGenerator(cache_dir=paths.fal_cache, ledger=ledger, budget_usd=budget)
-    # Colours only matter in spec mode (they go into the prompt).
-    meter = ColourMeter() if settings.use_colours and args.prompt_mode == "spec" else None
-    reconstructor = Reconstructor(settings, generator, vision, cache, meter)
+    reconstructor = Reconstructor(settings, generator, vision)
 
     run_dir = paths.runs_root / args.run
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -107,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
         "name": args.run,
         "model_key": args.model,
         "prompt_key": "reconstruction",
-        "inputs": "spec",
+        "inputs": args.prompt_mode,
         "samples": 1,
         **{key: value for key, value in asdict(settings).items() if key != "model_key"},
     }

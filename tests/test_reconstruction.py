@@ -71,7 +71,7 @@ def test_relight_pass_uses_packshot_as_only_reference(tmp_path: Path) -> None:
     vision = FakeVision({"spec": {"category": "T-shirt"}, "gate": {}})
     generator = FakeGenerator()
     settings = ReconstructionSettings(relight=True)
-    reconstructor = Reconstructor(settings, generator, cast(VisionClient, vision), tmp_path)
+    reconstructor = Reconstructor(settings, generator, cast(VisionClient, vision))
     result = reconstructor.run(GarmentItem("g1", (front,), None), tmp_path / "work")
 
     assert len(generator.requests) == 2
