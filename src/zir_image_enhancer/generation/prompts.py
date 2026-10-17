@@ -35,11 +35,39 @@ _DETAIL_REFERENCES = (
 )
 
 
-def build_studio_prompt(detail_names: Sequence[str] = ()) -> str:
-    """``studio-style-v2`` for the front photo plus one close-up per detail name."""
+# Most adult garments in the training targets are not flat-lays seen from above: they are
+# shot straight on with the volume of an invisible mannequin (rounded shoulders, sleeves
+# falling close to the body, trousers hanging). This variant asks for that look.
+_STUDIO_GHOST_V1 = (
+    "Turn the {source} of this garment into an e-commerce product photo in the "
+    "invisible-mannequin style. "
+    "{references}"
+    "Show only the garment, front view, shot straight on at chest height (not from above), "
+    "centred and symmetric, with the natural three-dimensional volume it has when worn by an "
+    "invisible mannequin: level, rounded shoulders, sleeves falling naturally close to the "
+    "sides of the body, buttons and zips closed and the collar tidy; trousers, jeans and "
+    "shorts hang straight with both legs parallel; dresses and skirts fall naturally. Plain "
+    "seamless light-grey studio background (RGB 240,240,240), soft, even, diffused light and "
+    "only a faint soft shadow under the garment. The whole garment is visible with a margin on "
+    "every side and fills most of a portrait frame. Keep exactly the same garment: colour and "
+    "shade, fabric and texture, pattern, print, logos and small details, length and "
+    "proportions. Remove any person, mannequin, hanger, price tag, floor and props, and never "
+    "add accessories, other garments, text or watermarks."
+)
+
+STYLES = {"flat": _STUDIO_STYLE_V2, "ghost": _STUDIO_GHOST_V1}
+
+
+def build_studio_prompt(detail_names: Sequence[str] = (), style: str = "flat") -> str:
+    """The studio prompt for the front photo plus one close-up per detail name.
+
+    ``flat`` is ``studio-style-v2`` (laid flat, from above); ``ghost`` the invisible-mannequin
+    look most adult targets have.
+    """
+    template = STYLES[style]
     if detail_names:
         references = _DETAIL_REFERENCES.format(
             last=len(detail_names) + 1, details=", ".join(detail_names)
         )
-        return _STUDIO_STYLE_V2.format(source="reference photos", references=references)
-    return _STUDIO_STYLE_V2.format(source="photo", references="")
+        return template.format(source="reference photos", references=references)
+    return template.format(source="photo", references="")

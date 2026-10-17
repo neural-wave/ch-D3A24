@@ -57,6 +57,10 @@ class ReconstructionSettings:
     max_references: int = 4
     seed: int = 0
     mode: str = "jury"  # "oneshot", "harness" or "jury"; see the module docstring
+    # "flat" (studio-style-v2), "ghost" (invisible mannequin) or "auto": ghost only when the
+    # photo shows the garment on a mannequin. On the 10 holdout garments shot on a mannequin
+    # ghost scored +1.3 (7 of 10 wins); on hanger and flat photos it lost 6 to 8 points.
+    studio_style: str = "auto"
 
 
 @dataclass(frozen=True)
@@ -101,18 +105,27 @@ class Reconstructor:
             references += named_detail_references(spec, self._settings.max_references - 1)
 
         workdir.mkdir(parents=True, exist_ok=True)
+        style = _style_for(self._settings.studio_style, spec)
         front_only = references[:1]
         if self._settings.mode == "oneshot":
-            attempts = [self._attempt(spec, front_only, workdir, 0, build_studio_prompt())]
+            attempts = [
+                self._attempt(
+                    spec,
+                    front_only,
+                    workdir,
+                    0,
+                    build_studio_prompt(style=style),
+                )
+            ]
             final = attempts[0]
         elif self._settings.mode == "jury":
-            first = self._attempt(spec, front_only, workdir, 0, build_studio_prompt())
+            first = self._attempt(spec, front_only, workdir, 0, build_studio_prompt(style=style))
             attempts, final = [first], first
             if first.gate is not None and first.gate.problems:
                 fix = first.gate.fix or "; ".join(first.gate.problems)
                 if any(problem in GLOBAL_PROBLEMS for problem in first.gate.problems):
                     # Colour, shape or view is wrong everywhere: draw it again from the photo.
-                    prompt = build_harness_prompt(spec, references, fix)
+                    prompt = build_harness_prompt(spec, references, fix, style)
                     repair = self._attempt(spec, references, workdir, 1, prompt)
                 else:
                     # Only details are wrong: edit the one-shot packshot (image 1) so shape,
@@ -126,12 +139,16 @@ class Reconstructor:
                     final = repair
         else:
             first = self._attempt(
-                spec, references, workdir, 0, build_harness_prompt(spec, references)
+                spec,
+                references,
+                workdir,
+                0,
+                build_harness_prompt(spec, references, style=style),
             )
             attempts, final = [first], first
             if first.gate is not None and first.gate.problems:
                 fix = first.gate.fix or "; ".join(first.gate.problems)
-                prompt = build_harness_prompt(spec, references, fix)
+                prompt = build_harness_prompt(spec, references, fix, style)
                 repair = self._attempt(spec, references, workdir, 1, prompt)
                 attempts.append(repair)
                 # Keep the repair unless the gate finds more problems (severe ones count double).
@@ -165,6 +182,12 @@ class Reconstructor:
         image.write_bytes(result.png_bytes)
         gate = check(spec.front, image, spec, self._vision) if self._settings.gate else None
         return Attempt(prompt, tuple(str(r.path) for r in references), image, gate, result.cost_usd)
+
+
+def _style_for(setting: str, spec: GarmentSpec) -> str:
+    if setting != "auto":
+        return setting
+    return "ghost" if spec.photo_setup == "mannequin" else "flat"
 
 
 def _weight(gate: GateResult) -> int:

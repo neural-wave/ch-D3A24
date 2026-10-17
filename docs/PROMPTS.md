@@ -73,6 +73,21 @@ Turn the {source} of this garment into a fashion catalogue packshot. {references
 | `trainmulti_v2_triage_front` | Gemini picks the front | 61.70 (61.67 shuffled) |
 | `trainflat_sartiq-style-v2` | 22 flat-lay pairs | 60.74 |
 
+### `studio-ghost-v1` (in use for photos on a mannequin)
+
+Most adult targets are shot straight on with the volume of an invisible mannequin, not laid flat. Used by `--studio-style auto` when the spec says the photo shows the garment on a mannequin.
+
+```text
+Turn the {source} of this garment into an e-commerce product photo in the invisible-mannequin style. {references}Show only the garment, front view, shot straight on at chest height (not from above), centred and symmetric, with the natural three-dimensional volume it has when worn by an invisible mannequin: level, rounded shoulders, sleeves falling naturally close to the sides of the body, buttons and zips closed and the collar tidy; trousers, jeans and shorts hang straight with both legs parallel; dresses and skirts fall naturally. Plain seamless light-grey studio background (RGB 240,240,240), soft, even, diffused light and only a faint soft shadow under the garment. The whole garment is visible with a margin on every side and fills most of a portrait frame. Keep exactly the same garment: colour and shade, fabric and texture, pattern, print, logos and small details, length and proportions. Remove any person, mannequin, hanger, price tag, floor and props, and never add accessories, other garments, text or watermarks.
+```
+
+| Run | Setup | Score (one-shot) |
+|---|---|---|
+| `small_ghost` | all 19 small-holdout garments | 57.96 against 62.22 (flat): loses on flat and hanger photos |
+| `small_ghost` + `mannequin_ghost_rest` | the 10 holdout garments shot on a mannequin | 65.21 against 63.88 (7 of 10 wins; t0327 trousers +9.2, t0006 +6.8; t0275 -9.3, t0372 -8.3) |
+| photo setup flat / hanger | | -7.9 / -6.2 |
+| `holdout` v3 with `auto` (mannequin photos ghost, rest flat) | | 62.20 (v3 flat: 61.90) |
+
 ### `studio-flat-v1`
 
 For photos that already follow our capture protocol (flat, from above, colour balanced). Asks the model to change as little as possible.

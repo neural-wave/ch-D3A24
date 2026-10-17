@@ -150,3 +150,14 @@ def test_jury_mode_regenerates_for_a_colour_problem(tmp_path: Path) -> None:
     )
     # A colour problem is global: the repair starts again from the photo, not the packshot.
     assert generator.requests[1].images[0] == front
+
+
+def test_auto_style_uses_the_invisible_mannequin_only_for_mannequin_photos(tmp_path: Path) -> None:
+    front = _front(tmp_path)
+    for setup, expected in (("mannequin", "invisible-mannequin"), ("hanger", "laid flat")):
+        vision = FakeVision({"spec": {"category": "top", "photo_setup": setup}, "gate": {}})
+        generator = FakeGenerator()
+        Reconstructor(
+            ReconstructionSettings(mode="oneshot"), generator, cast(VisionClient, vision)
+        ).run(GarmentItem("g1", (front,), None), tmp_path / setup)
+        assert expected in generator.requests[0].prompt

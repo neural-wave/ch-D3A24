@@ -16,7 +16,9 @@ _STUDIO_LIGHT = (
 )
 
 
-def build_harness_prompt(spec: GarmentSpec, references: Sequence[Reference], fix: str = "") -> str:
+def build_harness_prompt(
+    spec: GarmentSpec, references: Sequence[Reference], fix: str = "", style: str = "flat"
+) -> str:
     """The studio prompt (best on the holdout) plus short constraints from the spec.
 
     The fully spec-written prompt scored 3 points lower, so the proven prompt stays the base
@@ -24,7 +26,7 @@ def build_harness_prompt(spec: GarmentSpec, references: Sequence[Reference], fix
     the details to keep.
     """
     names = [ref.label.removeprefix("a close-up of the ") for ref in references[1:]]
-    lines = [build_studio_prompt(names)]
+    lines = [build_studio_prompt(names, style)]
     proportions = proportion_text(spec)
     if proportions:
         lines.append(
