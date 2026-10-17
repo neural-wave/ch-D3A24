@@ -2,7 +2,7 @@
 
 The official harness (``scripts/eval_val.py`` and ``scripts/make_submission.py``)
 consumes ``<out>/<team>/<garment_id>/<view>.<ext>``. This CLI reads either manifest
-the dataset ships, runs :func:`zir_image_enhancer.pipeline.studio_shot` on each
+the dataset ships, runs :class:`zir_image_enhancer.pipeline.StudioPipeline` on all of each
 garment's photos, and writes that layout, so the same output can be self-scored
 and validated.
 
@@ -19,19 +19,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import numpy as np
-from PIL import Image
-
-from zir_image_enhancer.pipeline import DEFAULT_VIEW, studio_shot
-
-try:  # iPhone photos arrive as HEIC; the opener is optional.
-    from pillow_heif import register_heif_opener
-
-    register_heif_opener()
-except ImportError:  # pragma: no cover - only when pillow-heif is absent
-    pass
+from zir_image_enhancer.pipeline import (
+    DEFAULT_VIEW,
+    MissingKeyError,
+    StudioPipeline,
+    StudioResult,
+    StudioRunner,
+)
 
 _SPLIT_DIRS = {"train", "dev", "test"}
 
@@ -81,12 +79,7 @@ def _resolve_input(value: str, dataset_root: Path) -> Path:
     return path if path.is_absolute() else dataset_root / path
 
 
-def _load_rgb(path: Path) -> np.ndarray:
-    with Image.open(path) as image:
-        return np.asarray(image.convert("RGB"))
-
-
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, pipeline: StudioRunner | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="zir-run",
         description="Run the pipeline over a manifest into the challenge submission layout.",
@@ -101,6 +94,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--team", required=True, help="team folder name, e.g. zir")
     parser.add_argument("--view", default=DEFAULT_VIEW, help=f"view name (default: {DEFAULT_VIEW})")
     parser.add_argument("--limit", type=int, default=None, help="only the first N rows")
+    parser.add_argument("--workers", type=int, default=4, help="garments processed in parallel")
+    parser.add_argument(
+        "--relight", action="store_true", help="second pass that only fixes the studio light"
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -119,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
 
     out_root = Path(args.out) / args.team
     print(f"zir-run: {len(rows)} garment(s) from {manifest} (dataset {dataset_root})")
-    written = 0
+    jobs: list[tuple[str, list[Path], Path]] = []
     for row in rows:
         garment_id = str(row.get("garment_id") or row.get("pair_id"))
         view = str(row.get("view") or args.view)
@@ -127,21 +124,42 @@ def main(argv: list[str] | None = None) -> int:
         missing = [p for p in inputs if not p.is_file()]
         if missing:
             raise SystemExit(f"error: {garment_id}: input not found: {missing[0]}")
+        jobs.append((garment_id, inputs, out_root / garment_id / f"{view}.png"))
 
-        dest = out_root / garment_id / f"{view}.png"
-        if args.dry_run:
-            print(f"  {garment_id}: {inputs[0]} -> {dest}")
-            continue
+    if args.dry_run:
+        for garment_id, inputs, dest in jobs:
+            print(f"  {garment_id}: {len(inputs)} photo(s) -> {dest}")
+        return 0
 
-        result = studio_shot(_load_rgb(inputs[0]))
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        Image.fromarray(result).save(dest)
-        written += 1
-        print(f"  [{written}/{len(rows)}] {garment_id}: -> {dest}")
+    if pipeline is None:
+        try:
+            pipeline = StudioPipeline()
+        except MissingKeyError as error:
+            raise SystemExit(f"error: {error}") from error
+    runner = pipeline
 
-    if not args.dry_run:
-        print(f"zir-run: wrote {written} image(s) under {out_root}")
-    return 0
+    def one(job: tuple[str, list[Path], Path]) -> tuple[str, Path, StudioResult | Exception]:
+        garment_id, inputs, dest = job
+        try:
+            return garment_id, dest, runner.run(inputs, garment_id, relight=args.relight)
+        except Exception as error:  # noqa: BLE001
+            # One failed garment must not stop the batch; it is reported at the end.
+            return garment_id, dest, error
+
+    written, failed = 0, 0
+    with ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
+        for garment_id, dest, result in pool.map(one, jobs):
+            if isinstance(result, Exception):
+                failed += 1
+                print(f"  ! {garment_id}: {type(result).__name__}: {result}")
+                continue
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(result.image, dest)
+            written += 1
+            print(f"  [{written}/{len(jobs)}] {garment_id}: -> {dest} (${result.cost_usd:.3f})")
+
+    print(f"zir-run: wrote {written} image(s) under {out_root}, {failed} failed")
+    return 0 if failed == 0 else 1
 
 
 if __name__ == "__main__":

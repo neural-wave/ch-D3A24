@@ -1,7 +1,8 @@
 """Quality gate: compare the generated packshot with the front photo and the spec.
 
 It checks the failures the jury punishes and the photo can prove: wrong or missing details,
-invented text, extra items (mannequin, hanger, second garment), back instead of front, and an
+invented text, extra items (mannequin, hanger, a garment that is not part of the product), a
+back view instead of the front, wrong closures (a second zip puller) and an
 obvious colour change. A failed check returns the fix instructions for one repair attempt.
 """
 
@@ -27,7 +28,7 @@ Details that must be present and identical:
 
 Return:
 {{
-  "same_garment": <true if it is the same type of garment with the same construction>,
+  "same_garment": <true if it is the same type of product with the same construction>,
   "front_view": <true if image 2 shows the front>,
   "colour_ok": <false only if the colour or shade clearly changed>,
   "proportions_ok": <false if sleeve length or garment length relative to width clearly
@@ -36,6 +37,8 @@ Return:
                   bright, soft, even e-commerce studio photo with clean, vivid colours>,
   "flat_shape": <false if image 2 still shows the shape of a body or mannequin (bust, waist
                  curve, rounded shoulders) or the sag of a hanger instead of a flat garment>,
+  "closures_ok": <false if the number of buttons, snaps, zips or zip pullers differs from
+                  image 1, e.g. a second zip puller at the hem>,
   "extra_items": <true if there is a person, mannequin, hanger, tag, props, or a garment
                   that is not one of the product pieces>,
   "all_pieces": <false if one of the product pieces is missing>,
@@ -110,6 +113,8 @@ def check(front: Path, output: Path, spec: GarmentSpec, vision: VisionClient) ->
         problems.append("lighting not studio")
     if data.get("flat_shape") is False:
         problems.append("worn shape")
+    if data.get("closures_ok") is False:
+        problems.append("closures differ")
     if data.get("extra_items") is True:
         problems.append("extra items")
     if data.get("all_pieces") is False:

@@ -15,7 +15,8 @@ from zir_image_enhancer.reconstruction.photos import Role, RolePhoto
 from zir_image_enhancer.reconstruction.vision import VisionClient, as_int
 
 _SYSTEM = (
-    "You describe one single garment from phone photos for a packshot reconstruction pipeline. "
+    "You describe one single product (a garment, or an accessory such as glasses, a bag or a "
+    "belt) from phone photos for a packshot reconstruction pipeline. "
     "Answer with one JSON object and nothing else. Only describe what the photos show."
 )
 
@@ -26,7 +27,7 @@ Return this JSON object:
   "front_index": <photo that shows the WHOLE garment from the FRONT most clearly>,
   "roles": [{{"index": <n>, "role": "<front|back|detail|label|packaging|other>"}}],
   "garment_box": [ymin, xmin, ymax, xmax],
-  "category": "<e.g. crew-neck T-shirt, wide-leg trousers, cropped cardigan>",
+  "category": "<e.g. crew-neck T-shirt, wide-leg trousers, cropped cardigan, sunglasses>",
   "pieces": ["<each separate piece of this product, e.g. bikini top, bikini bottom>"],
   "construction": "<neckline, closures (number of buttons, zip), sleeves, pockets, hem, length>",
   "material": "<fabric and texture, e.g. ribbed knit, washed denim, satin>",

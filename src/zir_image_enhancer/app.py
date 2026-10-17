@@ -4,16 +4,20 @@ from __future__ import annotations
 
 import os
 import tempfile
+import threading
+import time
+from pathlib import Path
 
 import gradio as gr
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
-from zir_image_enhancer.pipeline import studio_shot
+from zir_image_enhancer.pipeline import MissingKeyError, StudioPipeline
 
 _MAIN_STATUS = "Add one or more photos, then create your studio shot."
 _NO_INPUT_STATUS = "Add at least one photo first."
-_READY_STATUS = "Studio shot ready, created from {count} photo(s)."
+_READY_STATUS = "Studio shot ready, created from {count} photo(s) in {seconds:.0f} s."
+_ERROR_STATUS = "Could not create the studio shot: {error}"
 _EMPTY_LOG = "_Your edit log will appear here after a run._"
 
 _HERO = """
@@ -94,61 +98,70 @@ _THEME = gr.themes.Soft(
 )
 
 
-def _collect_images(
-    gallery: list[np.ndarray | tuple[np.ndarray, str | None]] | None,
+_pipeline: StudioPipeline | None = None
+_pipeline_lock = threading.Lock()
+
+
+def _get_pipeline() -> StudioPipeline:
+    # Built on the first run, so the app starts (and shows a clear message) without a key.
+    global _pipeline
+    with _pipeline_lock:
+        if _pipeline is None:
+            _pipeline = StudioPipeline()
+        return _pipeline
+
+
+def _collect_photos(
+    gallery: list[str | tuple[str, str | None]] | None,
     camera: np.ndarray | None,
-) -> list[np.ndarray]:
-    """Merge the uploaded gallery and the camera capture into one list of photos.
-
-    ``gr.Gallery`` with ``type="numpy"`` yields ``(image, caption)`` tuples, so
-    unwrap those before use.
-    """
-    images: list[np.ndarray] = []
+) -> list[Path]:
+    """Uploaded files keep their names (01_front.jpg, 03_detail_logo.jpg), which carry the
+    photo roles; a camera capture is saved to a temporary file and added last."""
+    photos: list[Path] = []
     for item in gallery or []:
-        if isinstance(item, (tuple, list)):
-            item = item[0]
-        if isinstance(item, np.ndarray):
-            images.append(item)
+        path = item[0] if isinstance(item, (tuple, list)) else item
+        if isinstance(path, str) and path:
+            photos.append(Path(path))
     if camera is not None:
-        images.append(camera)
-    return images
+        with tempfile.NamedTemporaryFile(prefix="camera_", suffix=".jpg", delete=False) as handle:
+            Image.fromarray(camera).convert("RGB").save(handle.name, quality=95)
+            photos.append(Path(handle.name))
+    return photos
 
 
-def _format_log(images: list[np.ndarray]) -> str:
-    lines = [f"**{len(images)} photo(s) received**", ""]
-    for index, image in enumerate(images, start=1):
-        height, width = image.shape[:2]
-        lines.append(f"- Photo {index}: {width} x {height} px")
-    lines += [
-        "",
-        "_The pipeline stages are not connected yet, so the studio shot "
-        "currently matches the first photo._",
-    ]
-    return "\n".join(lines)
+def _load(path: Path) -> np.ndarray:
+    with Image.open(path) as image:
+        return np.asarray(ImageOps.exif_transpose(image).convert("RGB"))
 
 
-def _save_png(image: np.ndarray | None) -> str | None:
-    if image is None:
-        return None
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as handle:
-        Image.fromarray(image).save(handle.name)
-        return handle.name
+def _format_log(lines: tuple[str, ...]) -> str:
+    return "\n".join(f"- {line}" for line in lines)
 
 
 def _enhance(
-    gallery: list[np.ndarray | tuple[np.ndarray, str | None]] | None,
+    gallery: list[str | tuple[str, str | None]] | None,
     camera: np.ndarray | None,
+    roles_text: str,
+    relight: bool,
 ) -> tuple[tuple[np.ndarray, np.ndarray] | None, str, str, str | None]:
-    """Run the demo on the gathered photos and return the UI outputs."""
-    images = _collect_images(gallery, camera)
-    if not images:
+    """Run the studio pipeline on the gathered photos and return the UI outputs."""
+    photos = _collect_photos(gallery, camera)
+    if not photos:
         return None, _EMPTY_LOG, _NO_INPUT_STATUS, None
+    roles = (roles_text or "").splitlines()
+    name = time.strftime("app-%Y%m%d-%H%M%S")
+    try:
+        result = _get_pipeline().run(photos, name, roles=roles, relight=relight)
+    except MissingKeyError as error:
+        return None, _EMPTY_LOG, _ERROR_STATUS.format(error=error), None
+    except Exception as error:  # noqa: BLE001
+        # Shown in the app instead of a stack trace (for example an exhausted fal balance).
+        message = f"{type(error).__name__}: {error}"
+        return None, _EMPTY_LOG, _ERROR_STATUS.format(error=message), None
 
-    before = images[0]
-    after = studio_shot(before)
-    slider = (before, after)
-    status = _READY_STATUS.format(count=len(images))
-    return slider, _format_log(images), status, _save_png(after)
+    slider = (_load(result.front), _load(result.image))
+    status = _READY_STATUS.format(count=len(photos), seconds=result.seconds)
+    return slider, _format_log(result.log), status, str(result.image)
 
 
 def _reset() -> tuple[object, ...]:
@@ -156,6 +169,7 @@ def _reset() -> tuple[object, ...]:
     return (
         None,  # gallery
         None,  # camera
+        "",  # roles
         None,  # result slider
         _EMPTY_LOG,
         _MAIN_STATUS,
@@ -174,7 +188,7 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
                     gallery = gr.Gallery(
                         label="Product photos",
                         sources=["upload", "clipboard"],
-                        type="numpy",
+                        type="filepath",
                         columns=3,
                         height=260,
                         object_fit="contain",
@@ -187,9 +201,16 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
                         height=300,
                     )
             gr.Markdown(
-                "Add a single photo, or several angles of the same item.",
+                "Add the front photo first, then the back and close-ups of details "
+                "(logos, prints, buttons). All photos must show the same product.",
                 elem_classes=["zir-hint"],
             )
+            roles = gr.Textbox(
+                label="Photo roles (optional, one line per photo)",
+                placeholder="front\nback\ndetail chest logo",
+                lines=3,
+            )
+            relight = gr.Checkbox(label="Extra studio-light pass (slower)", value=False)
             with gr.Row():
                 clear_btn = gr.Button("Clear", variant="secondary")
                 run_btn = gr.Button(
@@ -208,14 +229,14 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
             )
             status = gr.Markdown(_MAIN_STATUS)
             download = gr.DownloadButton("Download PNG", variant="secondary", visible=True)
-            with gr.Accordion("Edit log", open=False):
+            with gr.Accordion("What the pipeline understood", open=False):
                 log = gr.Markdown(_EMPTY_LOG)
 
     gr.HTML(_FOOTER)
 
     run_btn.click(
         _enhance,
-        inputs=[gallery, camera],
+        inputs=[gallery, camera, roles, relight],
         outputs=[slider, log, status, download],
     )
     clear_btn.click(
@@ -224,6 +245,7 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
         outputs=[
             gallery,
             camera,
+            roles,
             slider,
             log,
             status,

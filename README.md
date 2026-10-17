@@ -72,7 +72,7 @@ The official self-evaluation harness is vendored under `tools/` and `scripts/` (
 
 ```bash
 make holdout    # carve a self-evaluation holdout out of the example pairs
-make run        # run zircon's pipeline over dev into submissions/zir/
+make run        # run the studio pipeline over dev into submissions/zir/
 make eval       # score predictions/zir/ on the holdout with the frozen scorer
 make baseline   # reproduce the identity floor to compare against
 make validate   # check the submission layout and images before handing in
@@ -104,16 +104,20 @@ Always add `--dry-run` first where available: it prints the number of calls and 
 
 Detail photos are named by the user: `01_front.jpg`, `02_back.jpg`, `03_detail_chest-logo.jpg`. Only named detail photos are sent to the model.
 
-`zir-run`, `make run` and the Gradio app call `pipeline.studio_shot`, which is still a placeholder (output equals input).
+The Gradio app and `zir-run` (`make run`) use the harness through `pipeline.StudioPipeline`. Each run keeps its photos and attempts in `local/app_runs/<name>/`.
 
 ### Test day (our own captures)
+
+Start the app (`zir-app`, or `GRADIO_SHARE=1 zir-app` for a phone link), upload the front first, then the back and the close-ups, and optionally type one role per photo (`front`, `back`, `detail chest logo`). The log shows what the pipeline understood and what the gate found.
+
+For the whole set at once, one folder per garment in `local/captures/`:
 
 ```bash
 python scripts/make_capture_manifest.py --photos local/captures
 ```
 
 ```bash
-python scripts/run_pipeline.py --split test --captures local/captures/inputs.jsonl --prompt studio-flat-v1 --run test_captures --dry-run
+zir-run --manifest local/captures/inputs.jsonl --out local/submissions --team d3a24 --dry-run
 ```
 
 ## Experiments and scoring
