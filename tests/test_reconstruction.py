@@ -126,6 +126,9 @@ def test_jury_mode_keeps_the_oneshot_on_a_tie(tmp_path: Path) -> None:
     assert len(generator.requests) == 2
     assert generator.requests[0].prompt == build_studio_prompt()
     assert "seams differ" in generator.requests[1].prompt
+    # The repair edits the one-shot packshot, with the real photo as reference.
+    assert generator.requests[1].images[0].name == "attempt_1.png"
+    assert generator.requests[1].images[1] == front
     # Both attempts have the same defect, so the one-shot (better on the metric) stays.
     assert result.final.name == "attempt_1.png"
 
@@ -135,3 +138,15 @@ def test_unknown_mode_is_refused() -> None:
         Reconstructor(
             ReconstructionSettings(mode="best"), FakeGenerator(), cast(VisionClient, FakeVision({}))
         )
+
+
+def test_jury_mode_regenerates_for_a_colour_problem(tmp_path: Path) -> None:
+    front = _front(tmp_path)
+    vision = FakeVision({"spec": {"category": "T-shirt"}, "gate": {"colour_ok": False}})
+    generator = FakeGenerator()
+    settings = ReconstructionSettings(mode="jury")
+    Reconstructor(settings, generator, cast(VisionClient, vision)).run(
+        GarmentItem("g1", (front,), None), tmp_path / "work"
+    )
+    # A colour problem is global: the repair starts again from the photo, not the packshot.
+    assert generator.requests[1].images[0] == front

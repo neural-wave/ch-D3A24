@@ -165,6 +165,20 @@ The harness sends `studio-style-v2` (with the detail wrapper when there are name
 
 The length line made tops longer and narrower than their targets. Without it (v3) the score stayed low: the flatten line hurt mannequin shots in particular (t0103 -3.6, t0105 -6.8, where a neck scarf turned into a bow, t0327 -5.4), so it was removed too. The vivid line lowered the colour score slightly (0.646 to 0.634 on the 24 shared pairs).
 
+### Edit repair (v3, in use for detail defects)
+
+Image 1 is the one-shot packshot, image 2 the real photo, then the named detail photos.
+
+```text
+Image 1 is a studio packshot of a garment. Image 2 is a real photo of the same garment; images 3 to {n} are close-ups of its {details}. Edit image 1 only to fix these problems, using the real photos as the reference for how the garment looks: {fix from the gate}. Keep everything else in image 1 exactly as it is: the garment's shape, size and position, its colours, folds and texture, the background and the framing, unless a problem above is about one of them. Output only the edited packshot.
+```
+
+| Run | Repair used | Score |
+|---|---|---|
+| `holdout_jury` | always redraw (harness prompt + fix) | 61.76 |
+| `holdout_jury_edit` | always edit the packshot | 61.52 (t0087 69.2, t0327 61.7, but t0314 57.2: the colour cannot be edited back) |
+| `holdout_jury_hybrid` (v3) | edit for details, redraw for colour, proportions, view, crop, extra items | **61.90** (one-shot: 61.82) |
+
 ### Relight (removed)
 
 Second pass with the finished packshot as the only image.

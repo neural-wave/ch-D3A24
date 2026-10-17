@@ -29,7 +29,9 @@ flowchart TD
     F --> G{{"Jury gate<br/>Gemini 2.5 Flash"}}
     C -.->|details to check| G
     G -->|no defects| H["Studio packshot"]
-    G -->|defects found| R[["Repair<br/>front + named detail photos,<br/>spec details + the gate's fix"]]
+    G -->|detail defects| E[["Edit the packshot<br/>fix only the flagged details,<br/>real photos as reference"]]
+    G -->|global defects| R[["Draw it again<br/>front + detail photos,<br/>spec details + the gate's fix"]]
+    E --> G2
     R --> G2{{"Jury gate again"}}
     G2 --> K["Keep the one with fewer defects<br/>a tie keeps the one-shot"]
     K --> H
@@ -53,7 +55,7 @@ sequenceDiagram
     H->>V: real photo + packshot
     V-->>H: defects and a fix
     opt defects found
-        H->>G: front + detail photos, spec prompt + fix
+        H->>G: packshot + photos to edit details, or photos + fix to redraw
         G-->>H: second packshot
         H->>V: check again
     end
@@ -70,10 +72,10 @@ All three are in the code; pick one in the app or with `--mode` in `zir-run` and
 | Version | `--mode` | What it does | Holdout (38) | Dev leaderboard |
 |---|---|---|---|---|
 | v1 | `oneshot` | Studio prompt and the front photo, one generation | 61.82 | 68.62 |
-| v2 | `harness` | Spec details and sets in the prompt, named detail photos, gate, one repair | 61.77 (24 of 38) | |
-| **v3 (default)** | `jury` | v1 first; v2 repairs it only when the jury gate finds a defect | **61.76** | |
+| v2 | `harness` | Spec details and sets in the prompt, named detail photos, gate, one repair | 61.77 (24 of 38) | 68.30 (with the removed flattening line) |
+| **v3 (default)** | `jury` | v1 first; when the jury gate finds a defect, details are fixed by editing the packshot and global problems (colour, proportions, view, crop) by drawing it again | **61.90** | |
 
-On the holdout v3 repaired 4 of 38 garments (buttons, an embroidered logo, texture, colour), for about $0.01 per garment on top of v1.
+On the holdout v3 repaired 5 of 38 garments (buttons, an embroidered logo, two textures, a colour), for about $0.01 per garment on top of v1. Editing the packshot keeps its shape and framing (t0087 +0.8, t0327 +0.9) but cannot fix a colour (t0314: -4.1 editing, +10.4 redrawing), hence the split.
 
 One garment takes 20 to 60 seconds and about $0.05 to $0.13.
 
@@ -140,7 +142,8 @@ Scores come from the official scorer on a holdout of 38 training pairs grouped b
 | v1, one-shot studio prompt | 61.82 |
 | v2, harness with spec, gate and repair (24 of 38 garments) | 61.77 (one-shot on the same 24: 62.34) |
 | Harness + flattening (all 38, removed) | 60.72 |
-| v3, one-shot + jury gate + repair | 61.76 |
+| v3, one-shot + jury gate, redraw only | 61.76 |
+| v3, one-shot + jury gate, edit details and redraw global problems | 61.90 |
 
 The final ranking adds a human review of crop, logos, text, zips, seams, texture and colour to the leaderboard score. v3 keeps v1's score and repairs the garments where those fail. Picking the best version per garment (one-shot, harness and the removed variants) would reach 63.6 if we knew the target, but without it neither a scorer run against the input photo (61.0 to 62.1 depending on the metric) nor a Gemini judge on the jury's criteria (61.3) beat the one-shot prompt: per-garment differences are mostly sampling luck. Everything we tried and dropped is in `docs/PROMPTS.md` and `experiments/results.csv`; removed code is kept in the tags `exp-snapshot-2026-10-17` and `pre-cleanup-2026-10-17`.
 

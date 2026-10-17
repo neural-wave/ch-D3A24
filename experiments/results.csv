@@ -44,3 +44,5 @@ at,run,model,prompt,inputs,samples,pairs,score,colour,lpips,clip,geometry,ssim,b
 2026-10-17T12:48+00:00,holdout_harness_v2,nano-banana-2.1-portrait,reconstruction,harness,1,38,60.4,0.6168,0.3399,0.7396,0.8391,0.7108,60.4,0.046,21.0
 2026-10-17T15:35+00:00,holdout_harness_v3,nano-banana-2.1-portrait,reconstruction,harness,1,38,60.72,0.6204,0.3401,0.7456,0.8445,0.7096,60.72,0.062,19.6
 2026-10-17T16:41+00:00,holdout_jury,nano-banana-2.1-portrait,reconstruction,jury,1,38,61.76,0.6385,0.3499,0.7473,0.8463,0.7136,61.76,0.009,6.3
+2026-10-17T17:18+00:00,holdout_jury_edit,nano-banana-2.1-portrait,reconstruction,jury,1,38,61.52,0.6344,0.3463,0.747,0.8475,0.7129,61.52,0.008,23.2
+2026-10-17T17:22+00:00,holdout_jury_hybrid,nano-banana-2.1-portrait,reconstruction,jury,1,38,61.9,0.6402,0.3512,0.748,0.8481,0.7137,61.9,0.0,0.1

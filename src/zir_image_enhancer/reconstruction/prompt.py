@@ -51,3 +51,23 @@ def pieces_text(pieces: Sequence[str]) -> str:
         "arranged like a catalogue set (top above bottom, pairs side by side), at the same "
         "scale and not overlapping."
     )
+
+
+def build_edit_repair_prompt(references: Sequence[Reference], fix: str) -> str:
+    """v3 repair: edit the one-shot packshot instead of drawing the garment again.
+
+    Regenerating from the phone photo fixed the detail but moved shape, colour and framing
+    (3 of 4 holdout repairs lost points). Image 1 is the packshot to keep; the real photos
+    only show what the flagged details must look like.
+    """
+    closeups = [ref.label.removeprefix("a close-up of the ") for ref in references[1:]]
+    photos = "Image 2 is a real photo of the same garment"
+    if closeups:
+        photos += f"; images 3 to {len(references) + 1} are close-ups of its " + ", ".join(closeups)
+    return (
+        f"Image 1 is a studio packshot of a garment. {photos}. Edit image 1 only to fix these "
+        f"problems, using the real photos as the reference for how the garment looks: {fix}. "
+        "Keep everything else in image 1 exactly as it is: the garment's shape, size and "
+        "position, its colours, folds and texture, the background and the framing, unless a "
+        "problem above is about one of them. Output only the edited packshot."
+    )
