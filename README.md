@@ -79,6 +79,21 @@ v3 also picks the photo style per garment (`--studio-style auto`, the default): 
 
 On the holdout v3 repaired 5 of 38 garments (buttons, an embroidered logo, two textures, a colour), for about $0.01 per garment on top of v1. Editing the packshot keeps its shape and framing (t0087 +0.8, t0327 +0.9) but cannot fix a colour (t0314: -4.1 editing, +10.4 redrawing), hence the split.
 
+### v4: several versions, one pick
+
+`scripts/select_versions.py` picks one image per garment among several versions (different prompts and seeds), with no target: two embedding experts, CLIP (what the garment is, overall style) and AlexNet (the LPIPS backbone: texture), rank each candidate by how close it is to the house style of the training studio photos and to the garment's own photo. The jury gate then checks the top 3 in order and keeps the first without defects.
+
+| Pool | Best single version | v4 pick |
+|---|---|---|
+| Holdout, 9 versions | 61.90 | **63.01** |
+| Dev leaderboard, 7 versions (one expert, then two) | 68.75 | **69.76 / 69.78** |
+
+The gain grows with every distinct version in the pool (about +0.2 each, measured from 2 to 9 versions). A third expert (DINOv2) did not help. Each extra version costs about $0.06 per garment.
+
+```bash
+uv run --extra select python scripts/select_versions.py --split test --run test_v4 --versions v3=local/runs/test_v3/cand_0 A=local/runs/test_A/cand_0 ...
+```
+
 One garment takes 20 to 60 seconds and about $0.05 to $0.13.
 
 ## Requirements

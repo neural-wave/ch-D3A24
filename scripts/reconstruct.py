@@ -62,6 +62,9 @@ def main(argv: list[str] | None = None) -> int:
         choices=["auto", "flat", "ghost", "baseline", "baseline-keep", "baseline-white"],
         default="auto",
     )
+    parser.add_argument(
+        "--seed", type=int, default=0, help="another seed gives another sample of the same prompt"
+    )
     parser.add_argument("--no-gate", action="store_true")
     parser.add_argument("--no-detail-photos", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
@@ -83,6 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         use_detail_photos=not args.no_detail_photos,
         gate=not args.no_gate,
         mode=args.mode,
+        seed=args.seed,
         studio_style=args.studio_style,
     )
     budget = float(os.environ.get("ZIR_FAL_BUDGET_USD", 70.0))

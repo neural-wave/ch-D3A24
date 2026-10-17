@@ -33,6 +33,11 @@ scorer = [
     "onnxruntime>=1.17",
     "tqdm>=4.66",
 ]
+# v4 version selector (scripts/select_versions.py): CLIP and AlexNet embeddings.
+select = [
+    "open_clip_torch>=2.24",
+    "torchvision",
+]
 dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
