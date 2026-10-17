@@ -106,4 +106,3 @@ def test_single_garment_prompt_has_no_set_line(tmp_path: Path) -> None:
     spec = _spec(tmp_path / "a.jpg", "flat")
     prompt = build_harness_prompt(spec, [Reference(spec.front, "the front")])
     assert "set of" not in prompt
-    assert "never shorten, squash or widen it" in prompt

@@ -12,9 +12,7 @@ from zir_image_enhancer.reconstruction.spec import GarmentSpec
 _STUDIO_LIGHT = (
     "Light it like a high-key e-commerce studio photo: bright, soft and even light with lifted "
     "shadows and clean whites, so the real colours read clearly. It must not look darker, "
-    "dimmer or more contrasty than a catalogue photo, whatever the light in the reference. "
-    "Colours look rich, clean and vivid, as under professional studio light: the garment's "
-    "own hue, never washed out or greyish, and never oversaturated or shifted to another hue."
+    "dimmer or more contrasty than a catalogue photo, whatever the light in the reference."
 )
 
 
@@ -37,7 +35,6 @@ def build_harness_prompt(spec: GarmentSpec, references: Sequence[Reference], fix
     flatten = _FLATTEN.get(spec.photo_setup)
     if flatten:
         lines.append(flatten)
-    lines.append(_KEEP_LENGTH)
     lines.append(_STUDIO_LIGHT)
     if spec.details:
         keep = "; ".join(f"{d.name} ({d.location}): {d.description}" for d in spec.details)
@@ -65,18 +62,9 @@ _FLATTEN: dict[str, str] = {
     "flat": "Image 1 already shows the garment flat: keep its outline and only straighten it.",
 }
 
-# On the holdout, trousers, skirts, dresses and sleeveless tops came out shorter and wider
-# than the studio photo (9 of 24 garments by more than 10%); long-sleeved ones did not. The
-# model seems to squeeze long garments to fill the frame.
-_KEEP_LENGTH = (
-    "Keep the garment's real length and width: never shorten, squash or widen it to fill the "
-    "frame. A long garment (trousers, a maxi or midi dress or skirt) stays long and narrow, "
-    "with empty background at its sides."
-)
-
 _RELIGHT = (
     "Change only the lighting of this packshot: make it a high-key e-commerce studio photo with "
-    "bright, soft, even light, neutral white balance, lifted shadows, clean vivid colours and a "
+    "bright, soft, even light, neutral white balance, lifted shadows and a "
     "clean light-grey background (RGB 240,240,240). Do not change the garment's shape, size, "
     "position, folds, pattern, print, details or its hue. Output only the relit packshot."
 )

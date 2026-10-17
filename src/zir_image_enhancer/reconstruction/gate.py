@@ -33,8 +33,8 @@ Return:
   "colour_ok": <false only if the colour or shade clearly changed>,
   "proportions_ok": <false if sleeve length or garment length relative to width clearly
                      differs from image 1>,
-  "lighting_ok": <false if image 2 looks dark, dim, contrasty or washed out instead of a
-                  bright, soft, even e-commerce studio photo with clean, vivid colours>,
+  "lighting_ok": <false if image 2 looks dark, dim or contrasty instead of a bright, soft,
+                  even e-commerce studio photo>,
   "flat_shape": <false if image 2 still shows the shape of a body or mannequin (bust, waist
                  curve, rounded shoulders) or the sag of a hanger instead of a flat garment>,
   "extra_items": <true if there is a person, mannequin, hanger, tag, props, or a garment
