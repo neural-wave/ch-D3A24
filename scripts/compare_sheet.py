@@ -24,16 +24,20 @@ _LABEL = 18
 
 
 class CompareSheet:
-    def __init__(self, paths: ProjectPaths, runs: list[str], rows_per_page: int) -> None:
+    def __init__(
+        self, paths: ProjectPaths, runs: list[str], rows_per_page: int, manifest: Path | None = None
+    ) -> None:
         self._paths = paths
         self._runs = runs
         self._rows_per_page = rows_per_page
+        # Holdout by default; dev and test manifests have no target column.
+        self._manifest = manifest or paths.holdout_val
         self._scores = {run: self._load_scores(run) for run in runs}
 
     def write(self, out_dir: Path) -> int:
         pairs = [
             json.loads(line)
-            for line in self._paths.holdout_val.read_text(encoding="utf-8").splitlines()
+            for line in self._manifest.read_text(encoding="utf-8").splitlines()
             if line.strip()
         ]
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -45,7 +49,8 @@ class CompareSheet:
         return pages
 
     def _page(self, pairs: list[dict[str, object]]) -> Image.Image:
-        columns = ["input", *self._runs, "target"]
+        has_target = any(pair.get("target") for pair in pairs)
+        columns = ["input", *self._runs] + (["target"] if has_target else [])
         width = len(columns) * _TILE_W + 60
         height = _HEADER + len(pairs) * (_TILE_H + _LABEL)
         page = Image.new("RGB", (width, height), (40, 40, 40))
@@ -53,7 +58,7 @@ class CompareSheet:
         for col, name in enumerate(columns):
             draw.text((60 + col * _TILE_W + 4, 6), name[:28], fill=(240, 240, 240))
         for row, pair in enumerate(pairs):
-            garment = str(pair["pair_id"])
+            garment = str(pair.get("pair_id") or pair.get("garment_id"))
             y = _HEADER + row * (_TILE_H + _LABEL)
             draw.text((4, y + _TILE_H // 2), garment, fill=(240, 240, 240))
             raw_inputs = pair.get("inputs")
@@ -65,7 +70,9 @@ class CompareSheet:
                 found = sorted((self._paths.runs_root / run / "cand_0" / garment).glob("*.png"))
                 score = self._scores[run].get(garment)
                 cells.append((found[0] if found else None, f"{score:.1f}" if score else ""))
-            cells.append((self._paths.data_root / str(pair["target"]), ""))
+            if has_target:
+                target = pair.get("target")
+                cells.append((self._paths.data_root / str(target) if target else None, ""))
             for col, (path, label) in enumerate(cells):
                 x = 60 + col * _TILE_W
                 if path is not None and path.exists():
@@ -103,11 +110,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--runs", nargs="+", required=True)
     parser.add_argument("--name", default=None, help="default: the last run's name")
     parser.add_argument("--rows", type=int, default=10, help="garments per page")
+    parser.add_argument("--manifest", type=Path, default=None, help="default: the holdout")
     args = parser.parse_args(argv)
 
     paths = ProjectPaths.from_env()
     out_dir = paths.repo_root / "local" / "compare" / (args.name or args.runs[-1])
-    pages = CompareSheet(paths, args.runs, args.rows).write(out_dir)
+    pages = CompareSheet(paths, args.runs, args.rows, args.manifest).write(out_dir)
     print(f"{pages} page(s) in {out_dir}")
     return 0
 
