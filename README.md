@@ -24,7 +24,7 @@ flowchart TD
     A["Phone photos<br/>front, back, close-ups"] --> B["Prepare<br/>upright JPEG, roles from file names"]
     B --> C{{"Spec<br/>Gemini 2.5 Flash"}}
     C --> D["Pick references<br/>front + named detail photos"]
-    C --> E["Write the prompt<br/>studio style + proportions,<br/>flattening, details, sets"]
+    C --> E["Write the prompt<br/>studio style + proportions,<br/>studio light, details, sets"]
     D --> F[["Generate<br/>nano-banana 2.1 edit"]]
     E --> F
     F --> G{{"Quality gate<br/>Gemini 2.5 Flash"}}
@@ -61,7 +61,7 @@ sequenceDiagram
     App-->>U: before/after, PNG, what it understood
 ```
 
-What the gate checks: same garment, front view, colour, proportions, studio light, no body or hanger shape left, no person or props, no missing piece of a set, every listed detail, and no invented text or logos.
+What the gate checks: same garment, front view, colour, proportions, studio light, no person or props, no missing piece of a set, every listed detail, and no invented text or logos.
 
 One garment takes 20 to 60 seconds and about $0.06 to $0.13.
 
@@ -98,97 +98,58 @@ uv run python scripts/make_capture_manifest.py --photos local/captures
 ```
 
 ```bash
-make holdout              # carve a self-evaluation holdout out of the example pairs
-make predict              # run the pipeline over the holdout into predictions/zir/
-make predict-identity     # identity predictions on the holdout (the floor to beat)
-make predict-nanobanana   # hosted-baseline predictions on the holdout (spends budget)
-make eval                 # score predictions/zir/ with the frozen scorer
-make eval TEAM=identity   # score the floor for comparison
-make eval TEAM=hosted-edit # score the hosted baseline for comparison
-make run                  # run the pipeline over dev into submissions/zir/
-make baseline             # identity baseline over dev into submissions/identity/
-make validate             # check the submission layout and images before handing in
+uv run zir-run --manifest local/captures/inputs.jsonl --out local/submissions --team d3a24
 ```
 
-A full self-evaluation pass is `make holdout predict predict-identity`, then
-`make eval` and `make eval TEAM=identity`. Override defaults on the command line, e.g.
-`make eval TEAM=zir JOBS=4 LIMIT=8` or `make DATASET=<root> …`.
+It writes the official submission layout (`<out>/<team>/<garment>/front.png`).
 
-### Running the hosted (nano-banana) baseline
+## Project layout
 
-`make baseline-nanobanana` runs the vendored hosted image-edit baseline against fal.ai's
-`google/nano-banana-2.1/edit`. It reads the API key from the shell environment, falling
-back to the gitignored `.env` (`FAL_KEY=…`), so no manual export is needed.
+| Path | What it is |
+|---|---|
+| `src/zir_image_enhancer/app.py` | The Gradio app |
+| `src/zir_image_enhancer/cli.py` | `zir-run`, the batch runner |
+| `src/zir_image_enhancer/pipeline.py` | `StudioPipeline`, shared by the app and `zir-run` |
+| `src/zir_image_enhancer/reconstruction/` | Spec, prompt, references, gate and the repair loop |
+| `src/zir_image_enhancer/generation/` | fal client with cache and budget guard, model and studio prompt |
+| `scripts/` | Holdout evaluation (`reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py`) and the official starter scripts |
+| `docs/PROMPTS.md` | Every prompt we tried and how it scored |
+| `experiments/results.csv` | Every scored run |
+| `tools/`, `docs/neural-wave-2026/` | Official scorer, baselines and challenge docs (vendored) |
+
+## Evaluation
+
+Scores come from the official scorer on a holdout of 38 training pairs grouped by target. The scorer needs the real studio photo, so it is only used offline, never in the app.
+
+| Version | Holdout score |
+|---|---|
+| Phone photo unchanged | 39.78 |
+| Official baseline (nano-banana 2.1, first photo) | 60.22 |
+| One-shot studio prompt | 61.82 |
+| Harness with spec, gate and repair (24 of 38 garments) | 61.77 (one-shot on the same 24: 62.34) |
+
+The harness scores about the same as the one-shot prompt. We use it because it keeps details, shows every piece of a set and repairs invented text, which a jury sees and the metric barely does. Adding a flattening line for mannequin and worn photos scored 60.72 on all 38 and was removed. Everything we tried and dropped is in `docs/PROMPTS.md` and `experiments/results.csv`; removed code is kept in the tags `exp-snapshot-2026-10-17` and `pre-cleanup-2026-10-17`.
+
+Everything you need to evaluate is in the repo except the dataset, which goes in `data/sartiq_neural_wave_2026` (never committed). The `Makefile` wraps the official tools:
 
 ```bash
-make baseline-nanobanana-dry NB_LIMIT=2   # preview requests, no key, no spend
-make baseline-nanobanana NB_LIMIT=2       # one real call per garment (costs ~$0.06 each)
-make baseline-nanobanana                  # all 27 dev garments (~$2)
-```
-
-Always start with `--dry-run`; an edit costs about $0.06, so bound the first real run with
-`NB_LIMIT`. To target another provider or team, override `NB_PROVIDER=fal|gemini|openai`
-and `NB_TEAM=<name>` (see `tools/baselines/README.md`). Outputs land in
-`submissions/<NB_TEAM>/`, with a per-call `submissions/_manifest.jsonl` and preview
-payloads in `submissions/_requests/`. Validate the result with
-`make validate TEAM=hosted-edit`.
-
-To score the hosted baseline on the holdout instead of building a submission, use
-`make predict-nanobanana` (same key handling; writes `predictions/<NB_TEAM>/` and
-`predictions/_manifest.jsonl`), then `make eval TEAM=hosted-edit`. So the three holdout
-runs compare like for like:
-
-```bash
-make holdout predict predict-identity
-make eval                   # your pipeline
-make eval TEAM=identity     # the floor
-# make predict-nanobanana NB_LIMIT=4   # opt in, costs money
-make eval TEAM=hosted-edit  # the hosted baseline
-```
-
-The dataset is expected at `data/sartiq_neural_wave_2026` (gitignored). Override it per
-run with `--dataset <root>` or `make DATASET=<root> …`.
-## Local layout
-
-Everything under `local/` and `data/` is ignored by Git. Copy `.env.example` to `.env` and fill in `FAL_KEY`.
-
-```
-data/sartiq_neural_wave_2026/   the dataset (never committed, delete after the event)
-local/neural-wave-2026/         the official starter repo, with its own .venv for the scorer
-local/runs/<run>/               runs: cand_<k>/<id>/front.png, scores, reports
-local/fal_cache/                every paid fal result, so nothing is paid twice
-local/fal_ledger.jsonl          one line per paid call; the budget guard reads it
-```
-
-## Pipelines
-
-| Command | What it does | Holdout | $/garment |
-|---|---|---|---|
-| `scripts/run_pipeline.py --split dev` | Vision triage picks the front, nano-banana 2.1 (2:3) with `studio-style-v2`, export and validation | 61.82 | 0.06 |
-| `scripts/reconstruct.py --split holdout --run <name>` | Garment spec, studio prompt plus geometry, flattening and details, named detail photos, quality gate with one repair | 61.77 (24 of 38) | 0.07 |
-| same with `--relight` | Second pass that only changes the light | not tested | +0.06 |
-
-Always add `--dry-run` first where available: it prints the number of calls and the cost.
-
-Detail photos are named by the user: `01_front.jpg`, `02_back.jpg`, `03_detail_chest-logo.jpg`. Only named detail photos are sent to the model.
-
-The Gradio app and `zir-run` (`make run`) use the harness through `pipeline.StudioPipeline`. Each run keeps its photos and attempts in `local/app_runs/<name>/`.
-
-### Test day (our own captures)
-
-Start the app (`zir-app`, or `GRADIO_SHARE=1 zir-app` for a phone link), upload the front first, then the back and the close-ups, and optionally type one role per photo (`front`, `back`, `detail chest logo`). The log shows what the pipeline understood and what the gate found.
-
-For the whole set at once, one folder per garment in `local/captures/`:
-
-```bash
-uv run python scripts/reconstruct.py --run my_test --ids t0006 t0162
+make holdout predict predict-identity   # holdout split, our pipeline, and the floor
 ```
 
 ```bash
-uv run python scripts/score_run.py --run my_test
+make eval && make eval TEAM=identity    # score both with the frozen scorer
 ```
 
-The official self-evaluation tools are also wrapped in the `Makefile` (`make holdout`, `make eval`, `make validate`).
+| Target | What it does |
+|---|---|
+| `make holdout` | Carves the self-evaluation holdout out of the training pairs |
+| `make predict` | Runs our pipeline over the holdout into `predictions/<TEAM>/` |
+| `make eval` | Scores `predictions/<TEAM>/` with the official scorer |
+| `make run` / `make validate` | Runs our pipeline over dev into `submissions/<TEAM>/` and checks it |
+| `make baseline-nanobanana` | The official hosted baseline over dev (add `-dry` first; costs about $2) |
+| `make predict-nanobanana` | The hosted baseline on the holdout, to compare like for like |
+
+Override defaults on the command line, for example `make eval TEAM=zir JOBS=4 LIMIT=8`. Our own experiment scripts (`reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py`) use the starter repo clone in `local/neural-wave-2026` instead.
 
 ## Development
 

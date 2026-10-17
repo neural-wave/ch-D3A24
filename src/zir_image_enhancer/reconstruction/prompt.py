@@ -32,9 +32,6 @@ def build_harness_prompt(spec: GarmentSpec, references: Sequence[Reference], fix
         )
     if len(spec.pieces) > 1:
         lines.append(pieces_text(spec.pieces))
-    flatten = _FLATTEN.get(spec.photo_setup)
-    if flatten:
-        lines.append(flatten)
     lines.append(_STUDIO_LIGHT)
     if spec.details:
         keep = "; ".join(f"{d.name} ({d.location}): {d.description}" for d in spec.details)
@@ -42,25 +39,6 @@ def build_harness_prompt(spec: GarmentSpec, references: Sequence[Reference], fix
     if fix:
         lines.append(f"A previous attempt had these problems; fix them: {fix}")
     return " ".join(lines)
-
-
-# The edit model keeps the shape it sees: a garment shot on a mannequin came out with a bust
-# and a waist. Saying how the photo was taken tells it which shape to undo.
-_FLATTEN: dict[str, str] = {
-    "mannequin": (
-        "Image 1 shows the garment on a mannequin: flatten it completely, as the empty garment "
-        "lying flat. No bust, waist or hip shaping; side seams run straight from armhole to hem."
-    ),
-    "worn": (
-        "Image 1 shows the garment worn by a person: remove the body and flatten the empty "
-        "garment completely. No bust, waist or hip shaping; side seams run straight."
-    ),
-    "hanger": (
-        "Image 1 shows the garment on a hanger: remove the hanger and its sag; the shoulders lie "
-        "flat and level and the garment is not stretched downwards."
-    ),
-    "flat": "Image 1 already shows the garment flat: keep its outline and only straighten it.",
-}
 
 
 def pieces_text(pieces: Sequence[str]) -> str:

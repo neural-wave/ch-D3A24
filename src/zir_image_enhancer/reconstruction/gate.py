@@ -35,8 +35,6 @@ Return:
                      differs from image 1>,
   "lighting_ok": <false if image 2 looks dark, dim or contrasty instead of a bright, soft,
                   even e-commerce studio photo>,
-  "flat_shape": <false if image 2 still shows the shape of a body or mannequin (bust, waist
-                 curve, rounded shoulders) or the sag of a hanger instead of a flat garment>,
   "extra_items": <true if there is a person, mannequin, hanger, tag, props, or a garment
                   that is not one of the product pieces>,
   "all_pieces": <false if one of the product pieces is missing>,
@@ -109,8 +107,6 @@ def check(front: Path, output: Path, spec: GarmentSpec, vision: VisionClient) ->
         problems.append("proportions differ")
     if data.get("lighting_ok") is False:
         problems.append("lighting not studio")
-    if data.get("flat_shape") is False:
-        problems.append("worn shape")
     if data.get("extra_items") is True:
         problems.append("extra items")
     if data.get("all_pieces") is False:

@@ -47,27 +47,6 @@ def _spec(front: Path, setup: str) -> GarmentSpec:
     return GarmentSpec(front, (), "T-shirt", "", "", "", (), photo_setup=setup)
 
 
-def test_harness_prompt_flattens_mannequin_shape(tmp_path: Path) -> None:
-    spec = _spec(tmp_path / "front.jpg", "mannequin")
-    prompt = build_harness_prompt(spec, [Reference(spec.front, "the front")])
-    assert "No bust, waist or hip shaping" in prompt
-    # Unknown setups add nothing instead of a wrong instruction.
-    other = build_harness_prompt(_spec(spec.front, "other"), [Reference(spec.front, "x")])
-    assert "No bust" not in other
-
-
-def test_gate_reports_worn_shape(tmp_path: Path) -> None:
-    vision = FakeVision({"gate": {"flat_shape": False, "fix": "flatten it"}})
-    result = check(
-        tmp_path / "a.jpg",
-        tmp_path / "b.png",
-        _spec(tmp_path / "a.jpg", "worn"),
-        cast(VisionClient, vision),
-    )
-    assert result.problems == ("worn shape",)
-    assert not result.passed
-
-
 def test_gate_problem_triggers_one_repair_with_the_fix(tmp_path: Path) -> None:
     front = tmp_path / "01_front.jpg"
     Image.new("RGB", (8, 12), "red").save(front)
@@ -106,3 +85,10 @@ def test_single_garment_prompt_has_no_set_line(tmp_path: Path) -> None:
     spec = _spec(tmp_path / "a.jpg", "flat")
     prompt = build_harness_prompt(spec, [Reference(spec.front, "the front")])
     assert "set of" not in prompt
+
+
+def test_harness_prompt_does_not_flatten(tmp_path: Path) -> None:
+    # Flattening lines cost 1.2 points on the holdout and changed details on mannequin shots.
+    spec = _spec(tmp_path / "front.jpg", "mannequin")
+    prompt = build_harness_prompt(spec, [Reference(spec.front, "the front")])
+    assert "mannequin: flatten" not in prompt

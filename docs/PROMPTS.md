@@ -13,8 +13,8 @@ Every prompt we sent to a model, its full text, and the runs it was used in. Sco
 | Multi-photo wrapper | nano-banana 2.1 | removed | 60.71 on 43 pairs (first photo only: 61.46) |
 | Detail close-up wrapper | nano-banana 2.1 | **in use** (named detail photos) | -1.81 with unnamed close-ups |
 | Spec-written prompt | nano-banana 2.1 | removed | 58.84 |
-| Harness lines | nano-banana 2.1 | **in use**: proportions, flatten, studio light, details, pieces | 61.77 on 24 pairs |
-| Length, vivid colour, single zip lines | nano-banana 2.1 | removed | 60.40 (harness v2) |
+| Harness lines | nano-banana 2.1 | **in use**: proportions, studio light, details, pieces | 61.77 on 24 pairs |
+| Flatten, length, vivid colour, single zip lines | nano-banana 2.1 | removed | 60.40 (v2), 60.72 (flatten only, v3) |
 | Relight | nano-banana 2.1 | removed | -1.46 on 8 pairs |
 | Triage | Gemini 2.5 Flash | removed (the spec now picks the front) | 61.67 on shuffled photos |
 | Spec | Gemini 2.5 Flash | **in use** | |
@@ -143,10 +143,10 @@ The harness sends `studio-style-v2` (with the detail wrapper when there are name
 |---|---|---|
 | Proportions | in use | `Keep the proportions of image 1: garment length about {x} times the chest width; sleeves about {y} of the garment length; {notes}.` |
 | Pieces | in use, only for sets | `This product is a set of {n} pieces: {names}. Here "the garment" means the whole set: show every piece in the same packshot, each laid flat in front view, arranged like a catalogue set (top above bottom, pairs side by side), at the same scale and not overlapping.` |
-| Flatten, mannequin | in use | `Image 1 shows the garment on a mannequin: flatten it completely, as the empty garment lying flat. No bust, waist or hip shaping; side seams run straight from armhole to hem.` |
-| Flatten, worn | in use | `Image 1 shows the garment worn by a person: remove the body and flatten the empty garment completely. No bust, waist or hip shaping; side seams run straight.` |
-| Flatten, hanger | in use | `Image 1 shows the garment on a hanger: remove the hanger and its sag; the shoulders lie flat and level and the garment is not stretched downwards.` |
-| Flatten, flat | in use | `Image 1 already shows the garment flat: keep its outline and only straighten it.` |
+| Flatten, mannequin | removed | `Image 1 shows the garment on a mannequin: flatten it completely, as the empty garment lying flat. No bust, waist or hip shaping; side seams run straight from armhole to hem.` |
+| Flatten, worn | removed | `Image 1 shows the garment worn by a person: remove the body and flatten the empty garment completely. No bust, waist or hip shaping; side seams run straight.` |
+| Flatten, hanger | removed | `Image 1 shows the garment on a hanger: remove the hanger and its sag; the shoulders lie flat and level and the garment is not stretched downwards.` |
+| Flatten, flat | removed | `Image 1 already shows the garment flat: keep its outline and only straighten it.` |
 | Studio light | in use | `Light it like a high-key e-commerce studio photo: bright, soft and even light with lifted shadows and clean whites, so the real colours read clearly. It must not look darker, dimmer or more contrasty than a catalogue photo, whatever the light in the reference.` |
 | Vivid colour | removed | `Colours look rich, clean and vivid, as under professional studio light: the garment's own hue, never washed out or greyish, and never oversaturated or shifted to another hue.` (appended to the studio light line) |
 | Real length | removed | `Keep the garment's real length and width: never shorten, squash or widen it to fill the frame. A long garment (trousers, a maxi or midi dress or skirt) stays long and narrow, with empty background at its sides.` |
@@ -160,9 +160,10 @@ The harness sends `studio-style-v2` (with the detail wrapper when there are name
 | `flatten_test` | + flatten, vivid, length, single zip, pieces | 61.44 on 6 mannequin or worn pairs (harness: 61.20) |
 | `length_test` | same | 59.87 on 8 long garments (harness: 60.23) |
 | `holdout_harness_v2` | same | 60.40 on 38; on the 24 shared with `holdout_harness`: 60.50 against 61.77 |
-| current app | proportions, pieces, flatten, studio light, details, repair | not run on the holdout yet |
+| `holdout_harness_v3` | proportions, pieces, flatten, studio light, details, repair | 60.72 on 38; on the 24 shared with `holdout_harness`: 60.56 against 61.77 |
+| current app | proportions, pieces, studio light, details, repair | the original harness plus sets; not rerun |
 
-The length line made tops longer and narrower than their targets, which explains most of the v2 drop. The vivid line lowered the colour score slightly (0.646 to 0.634 on the 24 shared pairs).
+The length line made tops longer and narrower than their targets. Without it (v3) the score stayed low: the flatten line hurt mannequin shots in particular (t0103 -3.6, t0105 -6.8, where a neck scarf turned into a bow, t0327 -5.4), so it was removed too. The vivid line lowered the colour score slightly (0.646 to 0.634 on the 24 shared pairs).
 
 ### Relight (removed)
 
@@ -267,7 +268,7 @@ A free check showed that the spec's length-to-width estimate predicts the target
 
 ### Gate (in use)
 
-Compares the real front photo (image 1) with the packshot (image 2). Versions: v1 (`da22d1e`) checked same garment, front view, colour, extra items, details and invented text; v2 (`1fb2f88`) added proportions and lighting; v3 (current) added flat shape and pieces. A "washed out / vivid colours" condition on lighting and a closures check were tried in v3 and removed.
+Compares the real front photo (image 1) with the packshot (image 2). Versions: v1 (`da22d1e`) checked same garment, front view, colour, extra items, details and invented text; v2 (`1fb2f88`) added proportions and lighting; v3 (current) added pieces. A flat-shape check, a "washed out / vivid colours" condition on lighting and a closures check were tried in v3 and removed.
 
 ```text
 System: You are a strict quality checker for e-commerce packshots. Compare the packshot with the real photo of the same garment. Answer with one JSON object and nothing else.
@@ -288,8 +289,6 @@ Return:
                      differs from image 1>,
   "lighting_ok": <false if image 2 looks dark, dim or contrasty instead of a bright, soft,
                   even e-commerce studio photo>,
-  "flat_shape": <false if image 2 still shows the shape of a body or mannequin (bust, waist
-                 curve, rounded shoulders) or the sag of a hanger instead of a flat garment>,
   "extra_items": <true if there is a person, mannequin, hanger, tag, props, or a garment
                   that is not one of the product pieces>,
   "all_pieces": <false if one of the product pieces is missing>,
