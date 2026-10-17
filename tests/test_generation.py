@@ -120,3 +120,17 @@ def test_photo_roles_from_file_names() -> None:
     assert detail.role is Role.DETAIL and detail.name == "chest logo"
     assert role_from_filename(Path("01_front.jpg")).role is Role.FRONT
     assert role_from_filename(Path("input_1.jpg")).role is Role.UNKNOWN
+
+
+def test_small_holdout_is_a_stable_half_of_the_holdout(tmp_path: Path) -> None:
+    from zir_image_enhancer.dataset import split_manifest
+    from zir_image_enhancer.paths import ProjectPaths
+
+    paths = ProjectPaths(tmp_path, tmp_path, tmp_path / "starter", tmp_path)
+    paths.holdout_val.parent.mkdir(parents=True)
+    rows = [json.dumps({"pair_id": f"t{i:04d}", "inputs": []}) for i in range(6)]
+    paths.holdout_val.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    small = split_manifest("holdout-small", paths).read_text(encoding="utf-8").splitlines()
+    assert len(small) == 3 and set(small) <= set(rows)
+    # Written once: a second call returns the same pairs.
+    assert split_manifest("holdout-small", paths).read_text(encoding="utf-8").splitlines() == small

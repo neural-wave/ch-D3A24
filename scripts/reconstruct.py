@@ -50,7 +50,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--split", default="holdout")
+    parser.add_argument(
+        "--split", default="holdout-small", help="holdout-small (19 pairs), holdout (38), dev, test"
+    )
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--run", required=True)
     parser.add_argument("--model", default="nano-banana-2.1-portrait")
@@ -92,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
         "prompt_key": "reconstruction",
         "inputs": args.mode,
         "samples": 1,
+        "split": None if args.manifest else args.split,
         **{key: value for key, value in asdict(settings).items() if key != "model_key"},
     }
     (run_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")

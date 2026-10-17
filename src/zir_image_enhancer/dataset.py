@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,6 +48,8 @@ def load_manifest(manifest: Path, data_root: Path) -> list[GarmentItem]:
 
 def split_manifest(split: str, paths: ProjectPaths) -> Path:
     """Manifest path for a named split. 'holdout' is the validation side of our grouped split."""
+    if split == "holdout-small":
+        return small_holdout(paths)
     manifests = {
         "holdout": paths.holdout_val,
         "holdout-train": paths.holdout_train,
@@ -55,5 +58,27 @@ def split_manifest(split: str, paths: ProjectPaths) -> Path:
         "test": paths.data_root / "test" / "inputs.jsonl",
     }
     if split not in manifests:
-        raise KeyError(f"Unknown split '{split}'. Choose one of: {', '.join(manifests)}")
+        names = ", ".join([*manifests, "holdout-small"])
+        raise KeyError(f"Unknown split '{split}'. Choose one of: {names}")
     return manifests[split]
+
+
+def small_holdout(paths: ProjectPaths) -> Path:
+    """Half of the holdout (19 of 38 pairs, about 5% of the training pairs), written once.
+
+    It is a fixed subset of the full holdout rather than a new split, so every score we
+    already have can be compared on the same garments. Pairs are picked by a hash of their
+    id, which does not depend on file order. A run costs about half: ~$1.1 instead of ~$2.3.
+    """
+    target = paths.holdout_small
+    if not target.exists():
+        lines = [
+            line for line in paths.holdout_val.read_text(encoding="utf-8").splitlines() if line
+        ]
+
+        def rank(line: str) -> str:
+            return hashlib.sha1(str(json.loads(line)["pair_id"]).encode()).hexdigest()
+
+        chosen = sorted(lines, key=rank)[: len(lines) // 2]
+        target.write_text("\n".join(chosen) + "\n", encoding="utf-8")
+    return target

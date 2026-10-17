@@ -44,6 +44,11 @@ class ProjectPaths:
         return self.starter_root / "holdout" / "val.jsonl"
 
     @property
+    def holdout_small(self) -> Path:
+        """Half of the holdout (about 5% of the pairs), for cheaper runs; see dataset.py."""
+        return self.starter_root / "holdout" / "val_small.jsonl"
+
+    @property
     def holdout_train(self) -> Path:
         return self.starter_root / "holdout" / "train.jsonl"
 

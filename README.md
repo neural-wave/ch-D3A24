@@ -163,7 +163,7 @@ make eval && make eval TEAM=identity    # score both with the frozen scorer
 | `make baseline-nanobanana` | The official hosted baseline over dev (add `-dry` first; costs about $2) |
 | `make predict-nanobanana` | The hosted baseline on the holdout, to compare like for like |
 
-Override defaults on the command line, for example `make eval TEAM=zir JOBS=4 LIMIT=8`. Our own experiment scripts (`reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py`) use the starter repo clone in `local/neural-wave-2026` instead.
+Override defaults on the command line, for example `make eval TEAM=zir JOBS=4 LIMIT=8`. `make holdout` now holds out 5% of the pairs (`FRAC=0.05`, about $1.1 per pipeline run); `scripts/reconstruct.py` defaults to `--split holdout-small`, a fixed half of our 38-pair holdout, so older scores stay comparable. Our own experiment scripts (`reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py`) use the starter repo clone in `local/neural-wave-2026` instead.
 
 ## Development
 

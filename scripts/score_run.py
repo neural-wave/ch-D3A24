@@ -17,6 +17,7 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from zir_image_enhancer.dataset import split_manifest
 from zir_image_enhancer.paths import ProjectPaths
 
 SUBSCORES = ("colour", "lpips", "clip", "geometry", "ssim")
@@ -102,7 +103,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run", required=True, help="run name under local/runs/")
     parser.add_argument("--jobs", type=int, default=1, help="scorer workers (~1.4 GB RAM each)")
     parser.add_argument(
-        "--pairs", type=Path, default=None, help="pairs manifest to score on (default: holdout)"
+        "--pairs",
+        type=Path,
+        default=None,
+        help="pairs manifest to score on (default: the run's holdout split, else the holdout)",
     )
     parser.add_argument(
         "--no-log", action="store_true", help="do not append to experiments/results.csv"
@@ -117,12 +121,14 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     config = json.loads((run_dir / "config.json").read_text(encoding="utf-8"))
+    pairs = args.pairs or paths.holdout_val
+    if args.pairs is None and config.get("split") == "holdout-small":
+        # A run made on the small holdout is scored on the same 19 pairs, not on all 38.
+        pairs = split_manifest("holdout-small", paths)
     team_rows: list[dict[str, str]] = []
     per_pair: list[dict[str, float]] = []
     for candidate in candidates:
-        score_dir = score_candidate(
-            paths, run_dir, candidate, args.jobs, args.pairs or paths.holdout_val
-        )
+        score_dir = score_candidate(paths, run_dir, candidate, args.jobs, pairs)
         team_rows.append(read_team_row(score_dir))
         per_pair.append(read_pair_scores(score_dir))
 
