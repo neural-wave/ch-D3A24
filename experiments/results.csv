@@ -53,3 +53,5 @@ at,run,model,prompt,inputs,samples,pairs,score,colour,lpips,clip,geometry,ssim,b
 2026-10-18T00:30+00:00,small_C_baseline-white,nano-banana-2.1-portrait,baseline-white,oneshot,1,19,59.61,,,,,,59.61,0.06,
 2026-10-18T00:30+00:00,small_judge_pick_7_versions,pool,gemini judge over v1 v2 v3 v3auto A B C,pool,1,19,60.52,,,,,,60.52,0.001,
 2026-10-17T23:40+00:00,dev_leaderboard_bestpick,pool,gemini judge over 7 dev versions,pool,1,27,69.78,,,,,,69.78,0.001,
+2026-10-18T01:00+00:00,dev_leaderboard_stylepick_clip,pool,CLIP style prior over 7 dev versions,pool,1,27,69.76,,,,,,69.76,0.0,
+2026-10-18T01:00+00:00,dev_leaderboard_stylepick_clip_flat,pool,CLIP style prior over 6 flat dev versions,pool,1,27,69.34,,,,,,69.34,0.0,
