@@ -38,7 +38,6 @@ def build_harness_prompt(spec: GarmentSpec, references: Sequence[Reference], fix
     if flatten:
         lines.append(flatten)
     lines.append(_KEEP_LENGTH)
-    lines.append(_CLOSURES)
     lines.append(_STUDIO_LIGHT)
     if spec.details:
         keep = "; ".join(f"{d.name} ({d.location}): {d.description}" for d in spec.details)
@@ -73,13 +72,6 @@ _KEEP_LENGTH = (
     "Keep the garment's real length and width: never shorten, squash or widen it to fill the "
     "frame. A long garment (trousers, a maxi or midi dress or skirt) stays long and narrow, "
     "with empty background at its sides."
-)
-
-# Coats and jackets came back with a second zip puller at the hem (a two-way zip that is not
-# in the photo). Closures are counted, so the rule is written as counts.
-_CLOSURES = (
-    "Closures exactly as in image 1: the same number of buttons, snaps and zips, and a zip "
-    "has one single puller unless image 1 clearly shows two."
 )
 
 _RELIGHT = (
