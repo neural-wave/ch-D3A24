@@ -128,7 +128,7 @@ Scores come from the official scorer on a holdout of 38 training pairs grouped b
 | One-shot studio prompt | 61.82 |
 | Harness with spec, gate and repair (24 of 38 garments) | 61.77 (one-shot on the same 24: 62.34) |
 
-The harness scores about the same as the one-shot prompt. We use it because it keeps details, shows every piece of a set and repairs invented text, which a jury sees and the metric barely does. Adding a flattening line for mannequin and worn photos scored 60.72 on all 38 and was removed. Everything we tried and dropped is in `docs/PROMPTS.md` and `experiments/results.csv`; removed code is kept in the tags `exp-snapshot-2026-10-17` and `pre-cleanup-2026-10-17`.
+The harness scores about the same as the one-shot prompt. We use it because it keeps details, shows every piece of a set and repairs invented text, which a jury sees and the metric barely does. Adding a flattening line for mannequin and worn photos scored 60.72 on all 38 and was removed. Picking the best version per garment (one-shot, harness v2, v3) would reach 63.6 if we knew the target, but without it neither a scorer run against the input photo (61.0 to 62.1 depending on the metric) nor a Gemini judge on the jury's criteria (61.3) beat the one-shot prompt: per-garment differences are mostly sampling luck. Everything we tried and dropped is in `docs/PROMPTS.md` and `experiments/results.csv`; removed code is kept in the tags `exp-snapshot-2026-10-17` and `pre-cleanup-2026-10-17`.
 
 Everything you need to evaluate is in the repo except the dataset, which goes in `data/sartiq_neural_wave_2026` (never committed). The `Makefile` wraps the official tools:
 
