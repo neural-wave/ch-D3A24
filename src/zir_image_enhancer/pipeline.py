@@ -12,7 +12,7 @@ import os
 import re
 import time
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Protocol
 
@@ -54,7 +54,13 @@ class StudioResult:
 
 
 class StudioRunner(Protocol):
-    def run(self, photos: Sequence[Path], name: str, roles: Sequence[str] = ()) -> StudioResult: ...
+    def run(
+        self,
+        photos: Sequence[Path],
+        name: str,
+        roles: Sequence[str] = (),
+        mode: str | None = None,
+    ) -> StudioResult: ...
 
 
 class StudioPipeline:
@@ -76,13 +82,21 @@ class StudioPipeline:
         self._vision = VisionClient(ledger, budget, cache)
         self._work_root = self._paths.repo_root / "local" / "app_runs"
 
-    def run(self, photos: Sequence[Path], name: str, roles: Sequence[str] = ()) -> StudioResult:
-        """``roles`` optionally names each photo ("front", "back", "detail chest logo")."""
+    def run(
+        self,
+        photos: Sequence[Path],
+        name: str,
+        roles: Sequence[str] = (),
+        mode: str | None = None,
+    ) -> StudioResult:
+        """``roles`` optionally names each photo ("front", "back", "detail chest logo");
+        ``mode`` picks the version (oneshot, harness, jury) instead of the default."""
         if not photos:
             raise ValueError("no photos given")
         workdir = self._work_root / name
         inputs = prepare_photos(photos, workdir / "inputs", roles)
-        reconstructor = Reconstructor(self._settings, self._generator, self._vision)
+        settings = replace(self._settings, mode=mode) if mode else self._settings
+        reconstructor = Reconstructor(settings, self._generator, self._vision)
         started = time.perf_counter()
         result = reconstructor.run(GarmentItem(name, inputs, None), workdir / "attempts")
         return StudioResult(

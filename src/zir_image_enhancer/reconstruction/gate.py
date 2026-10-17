@@ -38,6 +38,13 @@ Return:
   "extra_items": <true if there is a person, mannequin, hanger, tag, props, or a garment
                   that is not one of the product pieces>,
   "all_pieces": <false if one of the product pieces is missing>,
+  "whole_visible": <false if any part of the garment is cut off by the image border>,
+  "logos_text_ok": <false if a logo, badge or printed or woven text of image 1 is missing,
+                    misspelled, moved or redrawn differently>,
+  "closures_ok": <false if zips, buttons or snaps differ in number, type or place from image 1>,
+  "seams_ok": <false if seams, stitching, hems, pockets or panels clearly differ from image 1>,
+  "texture_ok": <false if the fabric texture or knit clearly differs (smoothed away, a
+                 different weave or knit)>,
   "details": [{{"name": "<detail>", "ok": <true if present, same shape/text, same place>}}],
   "invented": <true if image 2 adds text, logos or prints that image 1 does not have>,
   "fix": "<short instructions to fix the problems, empty if none>"
@@ -48,12 +55,16 @@ Lighting and background differences are expected; judge only the garment itself.
 # Every problem is repaired once (the jury punishes any invented detail); the report says
 # which ones are severe. Minor repairs (a button count) cost about 2 points on the holdout
 # metric, which compares against one studio photo, not against the real garment.
+# The jury named crop, logos, text, zips, seams, texture and colour; the first three are
+# the ones a buyer notices at once, so they count as severe too.
 SEVERE = (
     "different garment",
     "not the front",
     "extra items",
     "missing piece",
     "invented text or logo",
+    "cropped",
+    "logo or text differs",
 )
 
 
@@ -111,6 +122,16 @@ def check(front: Path, output: Path, spec: GarmentSpec, vision: VisionClient) ->
         problems.append("extra items")
     if data.get("all_pieces") is False:
         problems.append("missing piece")
+    if data.get("whole_visible") is False:
+        problems.append("cropped")
+    if data.get("logos_text_ok") is False:
+        problems.append("logo or text differs")
+    if data.get("closures_ok") is False:
+        problems.append("closures differ")
+    if data.get("seams_ok") is False:
+        problems.append("seams differ")
+    if data.get("texture_ok") is False:
+        problems.append("texture differs")
     if data.get("invented") is True:
         problems.append("invented text or logo")
     rows = data.get("details")

@@ -18,7 +18,7 @@ Every prompt we sent to a model, its full text, and the runs it was used in. Sco
 | Relight | nano-banana 2.1 | removed | -1.46 on 8 pairs |
 | Triage | Gemini 2.5 Flash | removed (the spec now picks the front) | 61.67 on shuffled photos |
 | Spec | Gemini 2.5 Flash | **in use** | |
-| Gate | Gemini 2.5 Flash | **in use** | |
+| Gate | Gemini 2.5 Flash | **in use**, with the jury's criteria since v4 | v3 (jury mode): 61.76 |
 
 ## 1. Generation prompts (one-shot)
 
@@ -161,7 +161,7 @@ The harness sends `studio-style-v2` (with the detail wrapper when there are name
 | `length_test` | same | 59.87 on 8 long garments (harness: 60.23) |
 | `holdout_harness_v2` | same | 60.40 on 38; on the 24 shared with `holdout_harness`: 60.50 against 61.77 |
 | `holdout_harness_v3` | proportions, pieces, flatten, studio light, details, repair | 60.72 on 38; on the 24 shared with `holdout_harness`: 60.56 against 61.77 |
-| current app | proportions, pieces, studio light, details, repair | the original harness plus sets; not rerun |
+| `holdout_jury` (v3, the app's default) | one-shot `studio-style-v2` first; harness lines + fix only when the jury gate fails | 61.76 on 38 (one-shot: 61.82); 4 garments repaired: t0314 +10.4, t0042 -0.6, t0087 -2.6, t0327 -3.7 |
 
 The length line made tops longer and narrower than their targets. Without it (v3) the score stayed low: the flatten line hurt mannequin shots in particular (t0103 -3.6, t0105 -6.8, where a neck scarf turned into a bow, t0327 -5.4), so it was removed too. The vivid line lowered the colour score slightly (0.646 to 0.634 on the 24 shared pairs).
 
@@ -268,7 +268,7 @@ A free check showed that the spec's length-to-width estimate predicts the target
 
 ### Gate (in use)
 
-Compares the real front photo (image 1) with the packshot (image 2). Versions: v1 (`da22d1e`) checked same garment, front view, colour, extra items, details and invented text; v2 (`1fb2f88`) added proportions and lighting; v3 (current) added pieces. A flat-shape check, a "washed out / vivid colours" condition on lighting and a closures check were tried in v3 and removed.
+Compares the real front photo (image 1) with the packshot (image 2). Versions: v1 (`da22d1e`) checked same garment, front view, colour, extra items, details and invented text; v2 (`1fb2f88`) added proportions and lighting; v3 added pieces; v4 (current) added the jury's criteria: crop, logos and text, closures, seams and texture, with crop and logos or text counted as severe. A flat-shape check, a "washed out / vivid colours" condition on lighting and a closures check were tried in v3 and removed.
 
 ```text
 System: You are a strict quality checker for e-commerce packshots. Compare the packshot with the real photo of the same garment. Answer with one JSON object and nothing else.
@@ -292,6 +292,13 @@ Return:
   "extra_items": <true if there is a person, mannequin, hanger, tag, props, or a garment
                   that is not one of the product pieces>,
   "all_pieces": <false if one of the product pieces is missing>,
+  "whole_visible": <false if any part of the garment is cut off by the image border>,
+  "logos_text_ok": <false if a logo, badge or printed or woven text of image 1 is missing,
+                    misspelled, moved or redrawn differently>,
+  "closures_ok": <false if zips, buttons or snaps differ in number, type or place from image 1>,
+  "seams_ok": <false if seams, stitching, hems, pockets or panels clearly differ from image 1>,
+  "texture_ok": <false if the fabric texture or knit clearly differs (smoothed away, a
+                 different weave or knit)>,
   "details": [{"name": "<detail>", "ok": <true if present, same shape/text, same place>}],
   "invented": <true if image 2 adds text, logos or prints that image 1 does not have>,
   "fix": "<short instructions to fix the problems, empty if none>"
@@ -299,4 +306,4 @@ Return:
 Lighting and background differences are expected; judge only the garment itself.
 ```
 
-Severe problems (count double when choosing between the first attempt and the repair): different garment, not the front, extra items, missing piece, invented text or logo.
+Severe problems (count double when choosing between the first attempt and the repair): different garment, not the front, extra items, missing piece, invented text or logo, cropped, logo or text differs.

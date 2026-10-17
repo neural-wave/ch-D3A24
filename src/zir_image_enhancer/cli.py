@@ -96,6 +96,12 @@ def main(argv: list[str] | None = None, pipeline: StudioRunner | None = None) ->
     parser.add_argument("--limit", type=int, default=None, help="only the first N rows")
     parser.add_argument("--workers", type=int, default=4, help="garments processed in parallel")
     parser.add_argument(
+        "--mode",
+        choices=["oneshot", "harness", "jury"],
+        default=None,
+        help="pipeline version (default: the app's default)",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="print what would be written without running the pipeline",
@@ -138,7 +144,7 @@ def main(argv: list[str] | None = None, pipeline: StudioRunner | None = None) ->
     def one(job: tuple[str, list[Path], Path]) -> tuple[str, Path, StudioResult | Exception]:
         garment_id, inputs, dest = job
         try:
-            return garment_id, dest, runner.run(inputs, garment_id)
+            return garment_id, dest, runner.run(inputs, garment_id, mode=args.mode)
         except Exception as error:  # noqa: BLE001
             # One failed garment must not stop the batch; it is reported at the end.
             return garment_id, dest, error

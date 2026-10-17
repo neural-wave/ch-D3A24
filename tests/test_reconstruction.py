@@ -2,10 +2,12 @@ import io
 from pathlib import Path
 from typing import Any, cast
 
+import pytest
 from PIL import Image
 
 from zir_image_enhancer.dataset import GarmentItem
 from zir_image_enhancer.generation.fal_backend import GenerationRequest, GenerationResult
+from zir_image_enhancer.generation.prompts import build_studio_prompt
 from zir_image_enhancer.reconstruction.gate import check
 from zir_image_enhancer.reconstruction.photos import Role, RolePhoto
 from zir_image_enhancer.reconstruction.prompt import build_harness_prompt
@@ -54,7 +56,8 @@ def test_gate_problem_triggers_one_repair_with_the_fix(tmp_path: Path) -> None:
         {"spec": {"category": "T-shirt"}, "gate": {"colour_ok": False, "fix": "redder"}}
     )
     generator = FakeGenerator()
-    reconstructor = Reconstructor(ReconstructionSettings(), generator, cast(VisionClient, vision))
+    settings = ReconstructionSettings(mode="harness")
+    reconstructor = Reconstructor(settings, generator, cast(VisionClient, vision))
     result = reconstructor.run(GarmentItem("g1", (front,), None), tmp_path / "work")
 
     assert len(generator.requests) == 2
@@ -92,3 +95,43 @@ def test_harness_prompt_does_not_flatten(tmp_path: Path) -> None:
     spec = _spec(tmp_path / "front.jpg", "mannequin")
     prompt = build_harness_prompt(spec, [Reference(spec.front, "the front")])
     assert "mannequin: flatten" not in prompt
+
+
+def _front(tmp_path: Path) -> Path:
+    front = tmp_path / "01_front.jpg"
+    Image.new("RGB", (8, 12), "red").save(front)
+    return front
+
+
+def test_oneshot_mode_generates_once_from_the_front(tmp_path: Path) -> None:
+    front = _front(tmp_path)
+    vision = FakeVision({"spec": {"category": "T-shirt"}, "gate": {"colour_ok": False}})
+    generator = FakeGenerator()
+    settings = ReconstructionSettings(mode="oneshot")
+    Reconstructor(settings, generator, cast(VisionClient, vision)).run(
+        GarmentItem("g1", (front,), None), tmp_path / "work"
+    )
+    assert len(generator.requests) == 1
+    assert generator.requests[0].prompt == build_studio_prompt()
+
+
+def test_jury_mode_keeps_the_oneshot_on_a_tie(tmp_path: Path) -> None:
+    front = _front(tmp_path)
+    vision = FakeVision({"spec": {"category": "T-shirt"}, "gate": {"seams_ok": False}})
+    generator = FakeGenerator()
+    settings = ReconstructionSettings(mode="jury")
+    result = Reconstructor(settings, generator, cast(VisionClient, vision)).run(
+        GarmentItem("g1", (front,), None), tmp_path / "work"
+    )
+    assert len(generator.requests) == 2
+    assert generator.requests[0].prompt == build_studio_prompt()
+    assert "seams differ" in generator.requests[1].prompt
+    # Both attempts have the same defect, so the one-shot (better on the metric) stays.
+    assert result.final.name == "attempt_1.png"
+
+
+def test_unknown_mode_is_refused() -> None:
+    with pytest.raises(ValueError):
+        Reconstructor(
+            ReconstructionSettings(mode="best"), FakeGenerator(), cast(VisionClient, FakeVision({}))
+        )

@@ -20,6 +20,13 @@ _READY_STATUS = "Studio shot ready, created from {count} photo(s) in {seconds:.0
 _ERROR_STATUS = "Could not create the studio shot: {error}"
 _EMPTY_LOG = "_Your edit log will appear here after a run._"
 
+# Label shown in the app -> pipeline mode. Holdout scores and trade-offs are in the README.
+_VERSIONS = {
+    "v3 - one-shot, repaired when the jury checks fail": "jury",
+    "v2 - harness: spec details, gate and repair": "harness",
+    "v1 - one-shot studio prompt": "oneshot",
+}
+
 _HERO = """
 <div class="zir-hero">
   <h1>Zir Image Enhancer</h1>
@@ -142,6 +149,7 @@ def _enhance(
     gallery: list[str | tuple[str, str | None]] | None,
     camera: np.ndarray | None,
     roles_text: str,
+    version: str,
 ) -> tuple[tuple[np.ndarray, np.ndarray] | None, str, str, str | None]:
     """Run the studio pipeline on the gathered photos and return the UI outputs."""
     photos = _collect_photos(gallery, camera)
@@ -150,7 +158,7 @@ def _enhance(
     roles = (roles_text or "").splitlines()
     name = time.strftime("app-%Y%m%d-%H%M%S")
     try:
-        result = _get_pipeline().run(photos, name, roles=roles)
+        result = _get_pipeline().run(photos, name, roles=roles, mode=_VERSIONS.get(version))
     except MissingKeyError as error:
         return None, _EMPTY_LOG, _ERROR_STATUS.format(error=error), None
     except Exception as error:  # noqa: BLE001
@@ -209,6 +217,11 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
                 placeholder="front\nback\ndetail chest logo",
                 lines=3,
             )
+            version = gr.Radio(
+                choices=list(_VERSIONS),
+                value=next(iter(_VERSIONS)),
+                label="Pipeline version",
+            )
             with gr.Row():
                 clear_btn = gr.Button("Clear", variant="secondary")
                 run_btn = gr.Button(
@@ -234,7 +247,7 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
 
     run_btn.click(
         _enhance,
-        inputs=[gallery, camera, roles],
+        inputs=[gallery, camera, roles, version],
         outputs=[slider, log, status, download],
     )
     clear_btn.click(

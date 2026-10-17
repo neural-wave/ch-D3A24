@@ -2,6 +2,14 @@
 
 photos -> spec (vision) -> references (front, named detail photos)
        -> generate (nano-banana) -> quality gate -> one repair if it fails
+
+Three versions, kept side by side so they can be compared (holdout scores in the README):
+- "oneshot" (v1): studio prompt and the front photo, one generation, gate only reported.
+- "harness" (v2): studio prompt plus the spec's proportions, details and sets, with the named
+  detail photos; any gate problem gets one repair.
+- "jury" (v3): the one-shot first, because it scores best on the metric; only when the gate
+  finds a defect the jury looks at does the harness repair it, and the one with fewer
+  defects is kept (a tie keeps the one-shot).
 """
 
 from __future__ import annotations
@@ -13,12 +21,15 @@ from pathlib import Path
 from zir_image_enhancer.dataset import GarmentItem
 from zir_image_enhancer.generation.fal_backend import GenerationRequest, GenerationResult, Generator
 from zir_image_enhancer.generation.models import get_model
+from zir_image_enhancer.generation.prompts import build_studio_prompt
 from zir_image_enhancer.reconstruction.gate import GateResult, check
 from zir_image_enhancer.reconstruction.photos import roles_from_filenames
 from zir_image_enhancer.reconstruction.prompt import build_harness_prompt
 from zir_image_enhancer.reconstruction.references import Reference, named_detail_references
 from zir_image_enhancer.reconstruction.spec import GarmentSpec, extract_spec
 from zir_image_enhancer.reconstruction.vision import VisionClient
+
+MODES = ("oneshot", "harness", "jury")
 
 
 @dataclass(frozen=True)
@@ -28,6 +39,7 @@ class ReconstructionSettings:
     gate: bool = True
     max_references: int = 4
     seed: int = 0
+    mode: str = "jury"  # "oneshot", "harness" or "jury"; see the module docstring
 
 
 @dataclass(frozen=True)
@@ -58,6 +70,8 @@ class Reconstructor:
         self._settings = settings
         self._generator = generator
         self._vision = vision
+        if settings.mode not in MODES:
+            raise ValueError(f"Unknown mode '{settings.mode}'. Choose one of: {', '.join(MODES)}")
         self._model = get_model(settings.model_key)
 
     def run(self, item: GarmentItem, workdir: Path) -> ReconstructionResult:
@@ -70,16 +84,34 @@ class Reconstructor:
             references += named_detail_references(spec, self._settings.max_references - 1)
 
         workdir.mkdir(parents=True, exist_ok=True)
-        first = self._attempt(spec, references, workdir, sample=0, fix="")
-        attempts = [first]
-        final = first
-        if first.gate is not None and first.gate.problems:
-            fix = first.gate.fix or "; ".join(first.gate.problems)
-            repair = self._attempt(spec, references, workdir, sample=1, fix=fix)
-            attempts.append(repair)
-            # Keep the repair unless the gate finds more problems (severe ones count double).
-            if repair.gate is None or _weight(repair.gate) <= _weight(first.gate):
-                final = repair
+        front_only = references[:1]
+        if self._settings.mode == "oneshot":
+            attempts = [self._attempt(spec, front_only, workdir, 0, build_studio_prompt())]
+            final = attempts[0]
+        elif self._settings.mode == "jury":
+            first = self._attempt(spec, front_only, workdir, 0, build_studio_prompt())
+            attempts, final = [first], first
+            if first.gate is not None and first.gate.problems:
+                fix = first.gate.fix or "; ".join(first.gate.problems)
+                prompt = build_harness_prompt(spec, references, fix)
+                repair = self._attempt(spec, references, workdir, 1, prompt)
+                attempts.append(repair)
+                # Strictly fewer defects: on a tie the one-shot stays, it scores better.
+                if repair.gate is not None and _weight(repair.gate) < _weight(first.gate):
+                    final = repair
+        else:
+            first = self._attempt(
+                spec, references, workdir, 0, build_harness_prompt(spec, references)
+            )
+            attempts, final = [first], first
+            if first.gate is not None and first.gate.problems:
+                fix = first.gate.fix or "; ".join(first.gate.problems)
+                prompt = build_harness_prompt(spec, references, fix)
+                repair = self._attempt(spec, references, workdir, 1, prompt)
+                attempts.append(repair)
+                # Keep the repair unless the gate finds more problems (severe ones count double).
+                if repair.gate is None or _weight(repair.gate) <= _weight(first.gate):
+                    final = repair
 
         cost = spec.cost_usd + sum(
             a.cost_usd + (a.gate.cost_usd if a.gate else 0.0) for a in attempts
@@ -94,9 +126,8 @@ class Reconstructor:
         references: tuple[Reference, ...],
         workdir: Path,
         sample: int,
-        fix: str,
+        prompt: str,
     ) -> Attempt:
-        prompt = build_harness_prompt(spec, references, fix)
         request = GenerationRequest(
             self._model,
             prompt,

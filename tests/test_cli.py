@@ -18,7 +18,7 @@ class FakePipeline:
     def __init__(self) -> None:
         self.calls: list[tuple[str, int]] = []
 
-    def run(self, photos, name, roles=()) -> StudioResult:  # noqa: ANN001
+    def run(self, photos, name, roles=(), mode=None) -> StudioResult:  # noqa: ANN001
         self.calls.append((name, len(photos)))
         return StudioResult(Path(photos[0]), Path(photos[0]), (), 0.0, 0.0)
 

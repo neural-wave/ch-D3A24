@@ -54,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--run", required=True)
     parser.add_argument("--model", default="nano-banana-2.1-portrait")
+    parser.add_argument("--mode", choices=["oneshot", "harness", "jury"], default="jury")
     parser.add_argument("--no-gate", action="store_true")
     parser.add_argument("--no-detail-photos", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
@@ -74,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         model_key=args.model,
         use_detail_photos=not args.no_detail_photos,
         gate=not args.no_gate,
+        mode=args.mode,
     )
     budget = float(os.environ.get("ZIR_FAL_BUDGET_USD", 70.0))
     ledger = CostLedger(paths.fal_ledger)
@@ -88,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
         "name": args.run,
         "model_key": args.model,
         "prompt_key": "reconstruction",
-        "inputs": "harness",
+        "inputs": args.mode,
         "samples": 1,
         **{key: value for key, value in asdict(settings).items() if key != "model_key"},
     }

@@ -15,23 +15,23 @@ Two hosted models do the work, both through [fal.ai](https://fal.ai):
 | Gemini 2.5 Flash (vision) | Reads the photos before generating (the "spec") and checks the result afterwards (the "gate") |
 | nano-banana 2.1 edit (image) | Draws the packshot from the photos and a written instruction |
 
-Our code around them (the harness) decides which photos are sent, writes the instruction from what the vision model saw, checks the result and repairs it once if needed.
+Our code around them (the harness) decides which photos are sent, writes the instruction, checks the result on what the jury looks at and repairs it once if needed.
 
 ## How it works
+
+The default version (v3) keeps the prompt that scores best on the leaderboard and only steps in when the check finds a defect the jury would see: crop, logos, text, zips and buttons, seams, texture or colour.
 
 ```mermaid
 flowchart TD
     A["Phone photos<br/>front, back, close-ups"] --> B["Prepare<br/>upright JPEG, roles from file names"]
     B --> C{{"Spec<br/>Gemini 2.5 Flash"}}
-    C --> D["Pick references<br/>front + named detail photos"]
-    C --> E["Write the prompt<br/>studio style + proportions,<br/>studio light, details, sets"]
-    D --> F[["Generate<br/>nano-banana 2.1 edit"]]
-    E --> F
-    F --> G{{"Quality gate<br/>Gemini 2.5 Flash"}}
-    C -.->|what must be kept| G
-    G -->|no problems| H["Studio packshot"]
-    G -->|problems found| R["Repair once<br/>same prompt + the gate's fix"]
-    R --> K["Keep the attempt<br/>with fewer problems"]
+    C -->|front photo| F[["One-shot<br/>nano-banana 2.1 + studio prompt"]]
+    F --> G{{"Jury gate<br/>Gemini 2.5 Flash"}}
+    C -.->|details to check| G
+    G -->|no defects| H["Studio packshot"]
+    G -->|defects found| R[["Repair<br/>front + named detail photos,<br/>spec details + the gate's fix"]]
+    R --> G2{{"Jury gate again"}}
+    G2 --> K["Keep the one with fewer defects<br/>a tie keeps the one-shot"]
     K --> H
 ```
 
@@ -44,16 +44,16 @@ sequenceDiagram
     participant H as Harness
     participant V as Gemini 2.5 Flash
     participant G as nano-banana 2.1
-    U->>App: photos and optional roles
+    U->>App: photos, optional roles, version
     App->>H: StudioPipeline.run
     H->>V: all photos
-    V-->>H: spec: front, type, details, proportions, photo setup, pieces
-    H->>G: front + detail photos, prompt
+    V-->>H: spec: front, type, details, proportions, pieces
+    H->>G: front photo, studio prompt
     G-->>H: packshot
     H->>V: real photo + packshot
-    V-->>H: problems and a fix
-    opt problems found
-        H->>G: same photos, prompt + fix
+    V-->>H: defects and a fix
+    opt defects found
+        H->>G: front + detail photos, spec prompt + fix
         G-->>H: second packshot
         H->>V: check again
     end
@@ -61,9 +61,21 @@ sequenceDiagram
     App-->>U: before/after, PNG, what it understood
 ```
 
-What the gate checks: same garment, front view, colour, proportions, studio light, no person or props, no missing piece of a set, every listed detail, and no invented text or logos.
+What the gate checks: same garment, front view, nothing cropped, logos and text, zips and buttons, seams, texture, colour, proportions, studio light, no person or props, no missing piece of a set, every listed detail, and no invented text or logos.
 
-One garment takes 20 to 60 seconds and about $0.06 to $0.13.
+### Versions
+
+All three are in the code; pick one in the app or with `--mode` in `zir-run` and `scripts/reconstruct.py`.
+
+| Version | `--mode` | What it does | Holdout (38) | Dev leaderboard |
+|---|---|---|---|---|
+| v1 | `oneshot` | Studio prompt and the front photo, one generation | 61.82 | 68.62 |
+| v2 | `harness` | Spec details and sets in the prompt, named detail photos, gate, one repair | 61.77 (24 of 38) | |
+| **v3 (default)** | `jury` | v1 first; v2 repairs it only when the jury gate finds a defect | **61.76** | |
+
+On the holdout v3 repaired 4 of 38 garments (buttons, an embroidered logo, texture, colour), for about $0.01 per garment on top of v1.
+
+One garment takes 20 to 60 seconds and about $0.05 to $0.13.
 
 ## Requirements
 
@@ -125,10 +137,12 @@ Scores come from the official scorer on a holdout of 38 training pairs grouped b
 |---|---|
 | Phone photo unchanged | 39.78 |
 | Official baseline (nano-banana 2.1, first photo) | 60.22 |
-| One-shot studio prompt | 61.82 |
-| Harness with spec, gate and repair (24 of 38 garments) | 61.77 (one-shot on the same 24: 62.34) |
+| v1, one-shot studio prompt | 61.82 |
+| v2, harness with spec, gate and repair (24 of 38 garments) | 61.77 (one-shot on the same 24: 62.34) |
+| Harness + flattening (all 38, removed) | 60.72 |
+| v3, one-shot + jury gate + repair | 61.76 |
 
-The harness scores about the same as the one-shot prompt. We use it because it keeps details, shows every piece of a set and repairs invented text, which a jury sees and the metric barely does. Adding a flattening line for mannequin and worn photos scored 60.72 on all 38 and was removed. Picking the best version per garment (one-shot, harness v2, v3) would reach 63.6 if we knew the target, but without it neither a scorer run against the input photo (61.0 to 62.1 depending on the metric) nor a Gemini judge on the jury's criteria (61.3) beat the one-shot prompt: per-garment differences are mostly sampling luck. Everything we tried and dropped is in `docs/PROMPTS.md` and `experiments/results.csv`; removed code is kept in the tags `exp-snapshot-2026-10-17` and `pre-cleanup-2026-10-17`.
+The final ranking adds a human review of crop, logos, text, zips, seams, texture and colour to the leaderboard score. v3 keeps v1's score and repairs the garments where those fail. Picking the best version per garment (one-shot, harness and the removed variants) would reach 63.6 if we knew the target, but without it neither a scorer run against the input photo (61.0 to 62.1 depending on the metric) nor a Gemini judge on the jury's criteria (61.3) beat the one-shot prompt: per-garment differences are mostly sampling luck. Everything we tried and dropped is in `docs/PROMPTS.md` and `experiments/results.csv`; removed code is kept in the tags `exp-snapshot-2026-10-17` and `pre-cleanup-2026-10-17`.
 
 Everything you need to evaluate is in the repo except the dataset, which goes in `data/sartiq_neural_wave_2026` (never committed). The `Makefile` wraps the official tools:
 
