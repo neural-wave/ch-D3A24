@@ -1,0 +1,9 @@
+{
+  "dataset_root": "../data/raw/sartiq_neural_wave_2026",
+  "frac": 0.1,
+  "group_by_target": true,
+  "n_pairs": 382,
+  "n_train": 344,
+  "n_val": 38,
+  "seed": 0
+}

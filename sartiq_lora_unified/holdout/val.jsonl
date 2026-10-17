@@ -1,0 +1,38 @@
+{"inputs": ["train/t0162/input_1.jpg"], "pair_id": "t0162", "target": "train/t0162/target.jpg"}
+{"inputs": ["train/t0354/input_1.jpg"], "pair_id": "t0354", "target": "train/t0354/target.jpg"}
+{"inputs": ["train/t0033/input_1.jpg"], "pair_id": "t0033", "target": "train/t0033/target.jpg"}
+{"inputs": ["train/t0021/input_1.jpg"], "pair_id": "t0021", "target": "train/t0021/target.jpg"}
+{"inputs": ["train/t0314/input_1.jpg"], "pair_id": "t0314", "target": "train/t0314/target.jpg"}
+{"inputs": ["train/t0165/input_1.jpg", "train/t0165/input_2.jpg"], "pair_id": "t0165", "target": "train/t0165/target.jpg"}
+{"inputs": ["train/t0073/input_1.jpg"], "pair_id": "t0073", "target": "train/t0073/target.jpg"}
+{"inputs": ["train/t0211/input_1.jpg"], "pair_id": "t0211", "target": "train/t0211/target.jpg"}
+{"inputs": ["train/t0002/input_1.jpg"], "pair_id": "t0002", "target": "train/t0002/target.jpg"}
+{"inputs": ["train/t0216/input_1.jpg"], "pair_id": "t0216", "target": "train/t0216/target.jpg"}
+{"inputs": ["train/t0218/input_1.jpg", "train/t0218/input_2.jpg", "train/t0218/input_3.jpg", "train/t0218/input_4.jpg"], "pair_id": "t0218", "target": "train/t0218/target.jpg"}
+{"inputs": ["train/t0202/input_1.jpg"], "pair_id": "t0202", "target": "train/t0202/target.jpg"}
+{"inputs": ["train/t0209/input_1.jpg"], "pair_id": "t0209", "target": "train/t0209/target.jpg"}
+{"inputs": ["train/t0347/input_1.jpg", "train/t0347/input_2.jpg", "train/t0347/input_3.jpg", "train/t0347/input_4.jpg"], "pair_id": "t0347", "target": "train/t0347/target.jpg"}
+{"inputs": ["train/t0103/input_1.jpg"], "pair_id": "t0103", "target": "train/t0103/target.jpg"}
+{"inputs": ["train/t0105/input_1.jpg"], "pair_id": "t0105", "target": "train/t0105/target.jpg"}
+{"inputs": ["train/t0372/input_1.jpg"], "pair_id": "t0372", "target": "train/t0372/target.jpg"}
+{"inputs": ["train/t0327/input_1.jpg"], "pair_id": "t0327", "target": "train/t0327/target.jpg"}
+{"inputs": ["train/t0017/input_1.jpg"], "pair_id": "t0017", "target": "train/t0017/target.jpg"}
+{"inputs": ["train/t0237/input_1.jpg"], "pair_id": "t0237", "target": "train/t0237/target.jpg"}
+{"inputs": ["train/t0042/input_1.jpg", "train/t0042/input_2.jpg", "train/t0042/input_3.jpg"], "pair_id": "t0042", "target": "train/t0042/target.jpg"}
+{"inputs": ["train/t0025/input_1.jpg"], "pair_id": "t0025", "target": "train/t0025/target.jpg"}
+{"inputs": ["train/t0275/input_1.jpg"], "pair_id": "t0275", "target": "train/t0275/target.jpg"}
+{"inputs": ["train/t0006/input_1.jpg"], "pair_id": "t0006", "target": "train/t0006/target.jpg"}
+{"inputs": ["train/t0223/input_1.jpg"], "pair_id": "t0223", "target": "train/t0223/target.jpg"}
+{"inputs": ["train/t0199/input_1.jpg"], "pair_id": "t0199", "target": "train/t0199/target.jpg"}
+{"inputs": ["train/t0037/input_1.jpg"], "pair_id": "t0037", "target": "train/t0037/target.jpg"}
+{"inputs": ["train/t0255/input_1.jpg"], "pair_id": "t0255", "target": "train/t0255/target.jpg"}
+{"inputs": ["train/t0141/input_1.jpg"], "pair_id": "t0141", "target": "train/t0141/target.jpg"}
+{"inputs": ["train/t0118/input_1.jpg"], "pair_id": "t0118", "target": "train/t0118/target.jpg"}
+{"inputs": ["train/t0234/input_1.jpg"], "pair_id": "t0234", "target": "train/t0234/target.jpg"}
+{"inputs": ["train/t0087/input_1.jpg"], "pair_id": "t0087", "target": "train/t0087/target.jpg"}
+{"inputs": ["train/t0163/input_1.jpg"], "pair_id": "t0163", "target": "train/t0163/target.jpg"}
+{"inputs": ["train/t0164/input_1.jpg"], "pair_id": "t0164", "target": "train/t0164/target.jpg"}
+{"inputs": ["train/t0208/input_1.jpg"], "pair_id": "t0208", "target": "train/t0208/target.jpg"}
+{"inputs": ["train/t0133/input_1.jpg"], "pair_id": "t0133", "target": "train/t0133/target.jpg"}
+{"inputs": ["train/t0174/input_1.jpg"], "pair_id": "t0174", "target": "train/t0174/target.jpg"}
+{"inputs": ["train/t0288/input_1.jpg"], "pair_id": "t0288", "target": "train/t0288/target.jpg"}
