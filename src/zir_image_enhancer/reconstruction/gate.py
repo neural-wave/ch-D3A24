@@ -21,7 +21,8 @@ _SYSTEM = (
 _PROMPT = """Image 1 is the real photo of the garment (front). Image 2 is a generated packshot that
 must show the SAME garment, flat, front view, on a plain light background.
 
-Garment: {category}. Details that must be present and identical:
+Garment: {category}. {proportions}
+Details that must be present and identical:
 {details}
 
 Return:
@@ -29,6 +30,10 @@ Return:
   "same_garment": <true if it is the same type of garment with the same construction>,
   "front_view": <true if image 2 shows the front>,
   "colour_ok": <false only if the colour or shade clearly changed>,
+  "proportions_ok": <false if sleeve length or garment length relative to width clearly
+                     differs from image 1>,
+  "lighting_ok": <false if image 2 looks dark, dim or contrasty instead of a bright, soft,
+                  even e-commerce studio photo>,
   "extra_items": <true if there is a person, mannequin, hanger, tag, second garment or props>,
   "details": [{{"name": "<detail>", "ok": <true if present, same shape/text, same place>}}],
   "invented": <true if image 2 adds text, logos or prints that image 1 does not have>,
@@ -37,9 +42,9 @@ Return:
 Lighting and background differences are expected; judge only the garment itself."""
 
 
-# Problems worth paying for a repair. On the holdout, repairs for minor problems (a button
-# count, a slight shade) came back almost identical and scored 2 points lower on average,
-# so those stay as warnings in the report.
+# Every problem is repaired once (the jury punishes any invented detail); the report says
+# which ones are severe. Minor repairs (a button count) cost about 2 points on the holdout
+# metric, which compares against one studio photo, not against the real garment.
 SEVERE = ("different garment", "not the front", "extra items", "invented text or logo")
 
 
@@ -56,9 +61,23 @@ class GateResult:
         return tuple(problem for problem in self.problems if problem in SEVERE)
 
 
+def proportion_text(spec: GarmentSpec) -> str:
+    """The garment's proportions as one sentence, shared by the prompt and the gate."""
+    parts = []
+    if spec.body_length_to_width:
+        parts.append(f"garment length about {spec.body_length_to_width} times the chest width")
+    if spec.sleeve_to_body_length:
+        parts.append(f"sleeves about {spec.sleeve_to_body_length} of the garment length")
+    if spec.proportion_notes:
+        parts.append(spec.proportion_notes)
+    return ("Proportions in image 1: " + "; ".join(parts) + ".") if parts else ""
+
+
 def check(front: Path, output: Path, spec: GarmentSpec, vision: VisionClient) -> GateResult:
     details = "\n".join(f"- {d.name}: {d.description}" for d in spec.details) or "- none listed"
-    prompt = _PROMPT.format(category=spec.category, details=details)
+    prompt = _PROMPT.format(
+        category=spec.category, proportions=proportion_text(spec), details=details
+    )
     try:
         answer = vision.ask(_SYSTEM, prompt, [front, output], kind="gate")
     except Exception as error:  # noqa: BLE001
@@ -72,6 +91,10 @@ def check(front: Path, output: Path, spec: GarmentSpec, vision: VisionClient) ->
         problems.append("not the front")
     if data.get("colour_ok") is False:
         problems.append("colour changed")
+    if data.get("proportions_ok") is False:
+        problems.append("proportions differ")
+    if data.get("lighting_ok") is False:
+        problems.append("lighting not studio")
     if data.get("extra_items") is True:
         problems.append("extra items")
     if data.get("invented") is True:

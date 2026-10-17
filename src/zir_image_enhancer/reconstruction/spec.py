@@ -35,6 +35,12 @@ Return this JSON object:
       "description": "<exact text or shape, colours>",
       "box": [ymin, xmin, ymax, xmax]}}
   ],
+  "proportions": {{
+    "body_length_to_width": <garment length (shoulder to hem) / chest width on photo front_index>,
+    "sleeve_to_body_length": <sleeve length / garment length, or null without sleeves>,
+    "notes": "<where sleeves end and where the hem falls, e.g. sleeves end at the hem>"
+  }},
+  "photo_lighting": "<the light in the photos, e.g. warm indoor light, dim, flash, daylight>",
   "uncertain": ["<things the photos do not show clearly>"]
 }}
 
@@ -68,6 +74,10 @@ class GarmentSpec:
     pattern: str
     details: tuple[DetailSpec, ...]
     garment_box: tuple[int, int, int, int] | None = None  # on the front photo, 0-1000
+    body_length_to_width: float | None = None
+    sleeve_to_body_length: float | None = None
+    proportion_notes: str = ""
+    photo_lighting: str = ""
     uncertain: tuple[str, ...] = ()
     cost_usd: float = 0.0
     used_fallback: bool = False
@@ -124,6 +134,8 @@ def _build(photos: tuple[RolePhoto, ...], data: dict[str, object], cost: float) 
         role = Role.FRONT if i == front_index else _role(guessed.get(i + 1, ""))
         roles.append(RolePhoto(photo.path, role))
 
+    raw_proportions = data.get("proportions")
+    proportions = raw_proportions if isinstance(raw_proportions, dict) else {}
     details = []
     for row in _list(data.get("details"))[:5]:
         if not isinstance(row, dict):
@@ -145,6 +157,10 @@ def _build(photos: tuple[RolePhoto, ...], data: dict[str, object], cost: float) 
         pattern=str(data.get("pattern", "")),
         details=tuple(details),
         garment_box=_box(data.get("garment_box")),
+        body_length_to_width=_ratio(proportions.get("body_length_to_width")),
+        sleeve_to_body_length=_ratio(proportions.get("sleeve_to_body_length")),
+        proportion_notes=str(proportions.get("notes") or ""),
+        photo_lighting=str(data.get("photo_lighting") or ""),
         uncertain=tuple(str(item) for item in _list(data.get("uncertain"))),
         cost_usd=cost,
     )
@@ -153,6 +169,15 @@ def _build(photos: tuple[RolePhoto, ...], data: dict[str, object], cost: float) 
 def _fallback(photos: tuple[RolePhoto, ...], note: str) -> GarmentSpec:
     front = next((p.path for p in photos if p.role is Role.FRONT), photos[0].path)
     return GarmentSpec(front, photos, "garment", "", "", "", (), used_fallback=True, note=note)
+
+
+def _ratio(value: object) -> float | None:
+    try:
+        ratio = float(str(value))
+    except ValueError:
+        return None
+    # Outside this range the estimate is a misread, not a garment proportion.
+    return round(ratio, 2) if 0.2 <= ratio <= 5.0 else None
 
 
 def _role(value: str) -> Role:

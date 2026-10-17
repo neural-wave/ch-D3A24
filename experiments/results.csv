@@ -30,3 +30,4 @@ at,run,model,prompt,inputs,samples,pairs,score,colour,lpips,clip,geometry,ssim,b
 2026-10-17T09:11+00:00,holdout_recon_nocolour,nano-banana-2.1-portrait,reconstruction,spec,1,38,58.84,0.5957,0.3143,0.7452,0.832,0.6984,58.84,0.063,25.8
 2026-10-17T09:16+00:00,holdout_recon_colour,nano-banana-2.1-portrait,reconstruction,spec,1,38,57.16,0.5667,0.3071,0.7359,0.8224,0.6887,57.16,0.059,22.3
 2026-10-17T09:21+00:00,holdout_recon_style_gate,nano-banana-2.1-portrait,reconstruction,spec,1,38,61.46,0.632,0.3469,0.749,0.8468,0.7135,61.46,0.013,7.5
+2026-10-17T09:54+00:00,holdout_harness,nano-banana-2.1-portrait,reconstruction,spec,1,38,39.01,0.4078,0.2145,0.4736,0.5326,0.4494,39.01,0.065,25.9

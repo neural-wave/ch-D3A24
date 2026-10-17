@@ -18,8 +18,15 @@ from zir_image_enhancer.generation.prompts import build_prompt
 from zir_image_enhancer.reconstruction.colour import ColourMeter, MeasuredColour
 from zir_image_enhancer.reconstruction.gate import GateResult, check
 from zir_image_enhancer.reconstruction.photos import roles_from_filenames
-from zir_image_enhancer.reconstruction.prompt import build_reconstruction_prompt
-from zir_image_enhancer.reconstruction.references import Reference, build_references
+from zir_image_enhancer.reconstruction.prompt import (
+    build_harness_prompt,
+    build_reconstruction_prompt,
+)
+from zir_image_enhancer.reconstruction.references import (
+    Reference,
+    build_references,
+    named_detail_references,
+)
 from zir_image_enhancer.reconstruction.spec import GarmentSpec, extract_spec
 from zir_image_enhancer.reconstruction.vision import VisionClient
 
@@ -33,10 +40,10 @@ class ReconstructionSettings:
     gate: bool = True
     max_references: int = 4
     seed: int = 0
-    # "style": generate with the studio prompt and the front photo only, and use the spec
-    # only to check the result (and to write the fix for a repair). "spec": put the spec,
-    # colours and crops into the generation prompt (measured -3.0 on the holdout).
-    prompt_mode: str = "style"
+    # "harness": the studio prompt plus geometry, studio light and details from the spec, and
+    # the detail photos the user named. "style": studio prompt and front photo only, spec only
+    # for the gate (-0.37 on the holdout). "spec": spec-written prompt (-3.0).
+    prompt_mode: str = "harness"
 
 
 @dataclass(frozen=True)
@@ -83,10 +90,12 @@ class Reconstructor:
         if self._settings.use_colours and self._colour_meter is not None:
             with self._colour_lock:
                 colours = self._colour_meter.measure(spec.front, spec.garment_box)
-        if self._settings.prompt_mode == "style":
+        if self._settings.prompt_mode in ("style", "harness"):
             references: tuple[Reference, ...] = (
                 Reference(spec.front, "the whole garment from the front"),
             )
+            if self._settings.prompt_mode == "harness" and self._settings.use_detail_photos:
+                references += named_detail_references(spec, self._settings.max_references - 1)
         else:
             references = build_references(
                 spec,
@@ -100,12 +109,12 @@ class Reconstructor:
         first = self._attempt(spec, references, colours, workdir, sample=0, fix="")
         attempts = [first]
         final = first
-        if first.gate is not None and first.gate.severe:
-            fix = first.gate.fix or "; ".join(first.gate.severe)
+        if first.gate is not None and first.gate.problems:
+            fix = first.gate.fix or "; ".join(first.gate.problems)
             repair = self._attempt(spec, references, colours, workdir, sample=1, fix=fix)
             attempts.append(repair)
-            # Keep the repair unless the gate thinks it got worse.
-            if repair.gate is None or len(repair.gate.severe) <= len(first.gate.severe):
+            # Keep the repair unless the gate finds more problems (severe ones count double).
+            if repair.gate is None or _weight(repair.gate) <= _weight(first.gate):
                 final = repair
 
         cost = spec.cost_usd + sum(
@@ -128,6 +137,8 @@ class Reconstructor:
             prompt = build_prompt("studio-style-v2", len(references))
             if fix:
                 prompt += f" A previous attempt had these problems; fix them: {fix}"
+        elif self._settings.prompt_mode == "harness":
+            prompt = build_harness_prompt(spec, references, fix)
         else:
             prompt = build_reconstruction_prompt(spec, references, colours, fix)
         request = GenerationRequest(
@@ -142,3 +153,7 @@ class Reconstructor:
         image.write_bytes(result.png_bytes)
         gate = check(spec.front, image, spec, self._vision) if self._settings.gate else None
         return Attempt(prompt, tuple(str(r.path) for r in references), image, gate, result.cost_usd)
+
+
+def _weight(gate: GateResult) -> int:
+    return len(gate.problems) + len(gate.severe)

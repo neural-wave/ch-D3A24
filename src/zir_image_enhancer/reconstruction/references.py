@@ -68,3 +68,11 @@ def _crop(front: Path, box: tuple[int, int, int, int] | None, cache_dir: Path) -
         cache_dir.mkdir(parents=True, exist_ok=True)
         image.crop((left, top, right, bottom)).save(path)
     return path
+
+
+def named_detail_references(spec: GarmentSpec, limit: int) -> tuple[Reference, ...]:
+    """Detail photos the user named in the file name (03_detail_chest-logo.jpg)."""
+    named = [photo for photo in spec.photos_with(Role.DETAIL) if photo.name]
+    return tuple(
+        Reference(photo.path, f"a close-up of the {photo.name}") for photo in named[:limit]
+    )

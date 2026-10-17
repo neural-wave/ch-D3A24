@@ -58,9 +58,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", default="nano-banana-2.1-portrait")
     parser.add_argument(
         "--prompt-mode",
-        choices=["style", "spec"],
-        default="style",
-        help="style: studio prompt + front photo, spec only for checking; spec: spec in the prompt",
+        choices=["harness", "style", "spec"],
+        default="harness",
+        help="harness: studio prompt + spec geometry/light/details + named detail photos",
     )
     parser.add_argument("--no-gate", action="store_true")
     parser.add_argument("--no-colours", action="store_true")
