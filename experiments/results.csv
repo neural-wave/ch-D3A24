@@ -37,3 +37,7 @@ at,run,model,prompt,inputs,samples,pairs,score,colour,lpips,clip,geometry,ssim,b
 2026-10-17T15:00+00:00,post_chroma_105,post,chroma-x1.05,run:holdout_nb21p_v2_all,1,38,61.80,0.640,0.348,0.748,0.848,0.714,61.80,0.0,0.0
 2026-10-17T15:00+00:00,post_chroma_110,post,chroma-x1.10,run:holdout_nb21p_v2_all,1,38,61.40,0.630,0.347,0.747,0.848,0.714,61.40,0.0,0.0
 2026-10-17T15:00+00:00,post_chroma_120,post,chroma-x1.20,run:holdout_nb21p_v2_all,1,38,60.06,0.600,0.345,0.744,0.849,0.714,60.06,0.0,0.0
+2026-10-17T12:31+00:00,relight_test,nano-banana-2.1-portrait,relight-v1,packshot from holdout_nb21p_v2_all,2,8,59.49,0.5416,0.3841,0.7784,0.8761,0.6803,61.23,0.0,0.0
+2026-10-17T12:32+00:00,flatten_test,nano-banana-2.1-portrait,reconstruction,harness,1,6,61.44,0.6334,0.3596,0.7451,0.8366,0.6764,61.44,0.062,24.7
+2026-10-17T12:33+00:00,flatten_relight_test,nano-banana-2.1-portrait,reconstruction,harness,1,6,61.12,0.6284,0.3633,0.7318,0.8365,0.6749,61.12,0.061,26.1
+2026-10-17T12:35+00:00,length_test,nano-banana-2.1-portrait,reconstruction,harness,1,8,59.87,0.6775,0.2935,0.6808,0.7765,0.7142,59.87,0.047,23.3
