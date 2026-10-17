@@ -57,7 +57,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--run", required=True)
     parser.add_argument("--model", default="nano-banana-2.1-portrait")
     parser.add_argument("--mode", choices=["oneshot", "harness", "jury"], default="jury")
-    parser.add_argument("--studio-style", choices=["auto", "flat", "ghost"], default="auto")
+    parser.add_argument(
+        "--studio-style",
+        choices=["auto", "flat", "ghost", "baseline", "baseline-keep", "baseline-white"],
+        default="auto",
+    )
     parser.add_argument("--no-gate", action="store_true")
     parser.add_argument("--no-detail-photos", action="store_true")
     parser.add_argument("--limit", type=int, default=None)

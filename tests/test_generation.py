@@ -134,3 +134,11 @@ def test_small_holdout_is_a_stable_half_of_the_holdout(tmp_path: Path) -> None:
     assert len(small) == 3 and set(small) <= set(rows)
     # Written once: a second call returns the same pairs.
     assert split_manifest("holdout-small", paths).read_text(encoding="utf-8").splitlines() == small
+
+
+def test_dev_variants_start_from_the_official_prompt() -> None:
+    base = build_studio_prompt(style="baseline")
+    assert base.startswith("Turn this photograph of a single garment")
+    assert "pure white background" in build_studio_prompt(style="baseline-white")
+    keep = build_studio_prompt(style="baseline-keep")
+    assert keep.startswith(base[:60]) and "as little as possible" in keep

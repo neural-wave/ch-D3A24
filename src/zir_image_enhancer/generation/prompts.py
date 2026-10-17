@@ -55,7 +55,40 @@ _STUDIO_GHOST_V1 = (
     "add accessories, other garments, text or watermarks."
 )
 
-STYLES = {"flat": _STUDIO_STYLE_V2, "ghost": _STUDIO_GHOST_V1}
+# The official hosted baseline prompt, verbatim (68.71 on dev with the first photo). Our
+# studio-style-v2 beat it on the holdout but not on dev (68.62), so dev-tuned variants start
+# from it. It has no {references} slot: these variants send the front photo only.
+_BASELINE = (
+    "Turn this photograph of a single garment into a clean e-commerce flat-lay packshot. "
+    "Lay the garment perfectly flat and centred on a plain, uniform light-grey background "
+    "(RGB 245,245,245), seen straight from above with no perspective distortion. Use soft, "
+    "even studio lighting with no visible shadow on the background. Keep the exact same "
+    "garment, colour, material, pattern and proportions as the original. Remove the person, "
+    "mannequin, hanger, floor, furniture and background; do not add props, text, logos, "
+    "watermarks or reflections. Output only the final packshot image."
+)
+
+# B: colour and LPIPS lose the most points, so ask the model to change less of the garment.
+_BASELINE_KEEP = _BASELINE.replace(
+    " Output only the final packshot image.",
+    " Change as little as possible of the garment itself: keep its real colours and "
+    "brightness, fabric texture, stitching, seams, logos and print exactly as in the photo; "
+    "only remove what is around it and lay it flat. Output only the final packshot image.",
+)
+
+# C: the same with a pure white background; generating it white can change how the model
+# exposes the garment, unlike painting the background afterwards (that lowered the score).
+_BASELINE_WHITE = _BASELINE.replace(
+    "light-grey background (RGB 245,245,245)", "pure white background (RGB 255,255,255)"
+)
+
+STYLES = {
+    "flat": _STUDIO_STYLE_V2,
+    "ghost": _STUDIO_GHOST_V1,
+    "baseline": _BASELINE,
+    "baseline-keep": _BASELINE_KEEP,
+    "baseline-white": _BASELINE_WHITE,
+}
 
 
 def build_studio_prompt(detail_names: Sequence[str] = (), style: str = "flat") -> str:
