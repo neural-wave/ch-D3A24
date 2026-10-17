@@ -88,7 +88,7 @@ On the holdout v3 repaired 5 of 38 garments (buttons, an embroidered logo, two t
 | Holdout, 9 versions | 61.90 | **63.01** |
 | Dev leaderboard, 7 versions (one expert, then two) | 68.75 | **69.76 / 69.78** |
 
-The gain grows with every distinct version in the pool (about +0.2 each, measured from 2 to 9 versions). A third expert (DINOv2) did not help. Each extra version costs about $0.06 per garment.
+The gain grows with every distinct version in the pool (about +0.2 each, measured from 2 to 9 versions). A third expert (DINOv2) did not help. Using embeddings before the generator did not either: choosing which version to generate from the versions that scored best on the most similar garments (by input photo, DINOv2 or CLIP) lands below the best single version (59.5 to 62.0), and comparing candidates with the targets of the most similar training garments instead of the house style in general changes the pick by -0.4 to +0.5 depending on the pool. On dev, v4 with 8 flat-lay versions scored 69.59 (69.37 with 6). Each extra version costs about $0.06 per garment.
 
 ```bash
 uv run --extra select python scripts/select_versions.py --split test --run test_v4 --versions v3=local/runs/test_v3/cand_0 A=local/runs/test_A/cand_0 ...
