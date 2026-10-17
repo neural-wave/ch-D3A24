@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from zir_image_enhancer.generation.prompts import build_prompt
+from zir_image_enhancer.generation.prompts import build_studio_prompt
 from zir_image_enhancer.reconstruction.gate import proportion_text
 from zir_image_enhancer.reconstruction.references import Reference
 from zir_image_enhancer.reconstruction.spec import GarmentSpec
@@ -23,8 +23,8 @@ def build_harness_prompt(spec: GarmentSpec, references: Sequence[Reference], fix
     and the spec only adds what the photo alone does not enforce: geometry, studio light and
     the details to keep.
     """
-    names = ", ".join(ref.label.removeprefix("a close-up of the ") for ref in references[1:])
-    lines = [build_prompt("studio-style-v2", len(references), len(references) - 1, names)]
+    names = [ref.label.removeprefix("a close-up of the ") for ref in references[1:]]
+    lines = [build_studio_prompt(names)]
     proportions = proportion_text(spec)
     if proportions:
         lines.append(
@@ -62,13 +62,6 @@ _FLATTEN: dict[str, str] = {
     "flat": "Image 1 already shows the garment flat: keep its outline and only straighten it.",
 }
 
-_RELIGHT = (
-    "Change only the lighting of this packshot: make it a high-key e-commerce studio photo with "
-    "bright, soft, even light, neutral white balance, lifted shadows and a "
-    "clean light-grey background (RGB 240,240,240). Do not change the garment's shape, size, "
-    "position, folds, pattern, print, details or its hue. Output only the relit packshot."
-)
-
 
 def pieces_text(pieces: Sequence[str]) -> str:
     """Sets (a bikini) are one product: the studio prompt's "only the garment" must not drop a
@@ -80,8 +73,3 @@ def pieces_text(pieces: Sequence[str]) -> str:
         "arranged like a catalogue set (top above bottom, pairs side by side), at the same "
         "scale and not overlapping."
     )
-
-
-def build_relight_prompt() -> str:
-    """Second pass: the shape is already done, so the model only has to fix the light."""
-    return _RELIGHT

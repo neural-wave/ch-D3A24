@@ -2,8 +2,8 @@
 
 ``StudioPipeline`` is the single seam shared by the Gradio app (``app.py``) and the batch
 runner (``cli.py`` / ``zir-run``). It runs the reconstruction harness: garment spec (vision),
-studio prompt with geometry, flattening and details, named detail photos, quality gate with
-one repair, and an optional relight pass.
+studio prompt with geometry, flattening and details, named detail photos, and a quality
+gate with one repair.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import os
 import re
 import time
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -54,9 +54,7 @@ class StudioResult:
 
 
 class StudioRunner(Protocol):
-    def run(
-        self, photos: Sequence[Path], name: str, roles: Sequence[str] = (), relight: bool = False
-    ) -> StudioResult: ...
+    def run(self, photos: Sequence[Path], name: str, roles: Sequence[str] = ()) -> StudioResult: ...
 
 
 class StudioPipeline:
@@ -78,16 +76,13 @@ class StudioPipeline:
         self._vision = VisionClient(ledger, budget, cache)
         self._work_root = self._paths.repo_root / "local" / "app_runs"
 
-    def run(
-        self, photos: Sequence[Path], name: str, roles: Sequence[str] = (), relight: bool = False
-    ) -> StudioResult:
+    def run(self, photos: Sequence[Path], name: str, roles: Sequence[str] = ()) -> StudioResult:
         """``roles`` optionally names each photo ("front", "back", "detail chest logo")."""
         if not photos:
             raise ValueError("no photos given")
         workdir = self._work_root / name
         inputs = prepare_photos(photos, workdir / "inputs", roles)
-        settings = replace(self._settings, relight=relight)
-        reconstructor = Reconstructor(settings, self._generator, self._vision)
+        reconstructor = Reconstructor(self._settings, self._generator, self._vision)
         started = time.perf_counter()
         result = reconstructor.run(GarmentItem(name, inputs, None), workdir / "attempts")
         return StudioResult(

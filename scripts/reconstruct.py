@@ -54,17 +54,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest", type=Path, default=None)
     parser.add_argument("--run", required=True)
     parser.add_argument("--model", default="nano-banana-2.1-portrait")
-    parser.add_argument(
-        "--prompt-mode",
-        choices=["harness", "style"],
-        default="harness",
-        help="harness: studio prompt + spec geometry/light/details + named detail photos",
-    )
     parser.add_argument("--no-gate", action="store_true")
     parser.add_argument("--no-detail-photos", action="store_true")
-    parser.add_argument(
-        "--relight", action="store_true", help="second pass that only fixes the studio light"
-    )
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--ids", nargs="*", default=None)
     parser.add_argument("--workers", type=int, default=6)
@@ -83,8 +74,6 @@ def main(argv: list[str] | None = None) -> int:
         model_key=args.model,
         use_detail_photos=not args.no_detail_photos,
         gate=not args.no_gate,
-        prompt_mode=args.prompt_mode,
-        relight=args.relight,
     )
     budget = float(os.environ.get("ZIR_FAL_BUDGET_USD", 70.0))
     ledger = CostLedger(paths.fal_ledger)
@@ -99,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
         "name": args.run,
         "model_key": args.model,
         "prompt_key": "reconstruction",
-        "inputs": args.prompt_mode,
+        "inputs": "harness",
         "samples": 1,
         **{key: value for key, value in asdict(settings).items() if key != "model_key"},
     }

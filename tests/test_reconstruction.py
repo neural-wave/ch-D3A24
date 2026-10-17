@@ -8,7 +8,7 @@ from zir_image_enhancer.dataset import GarmentItem
 from zir_image_enhancer.generation.fal_backend import GenerationRequest, GenerationResult
 from zir_image_enhancer.reconstruction.gate import check
 from zir_image_enhancer.reconstruction.photos import Role, RolePhoto
-from zir_image_enhancer.reconstruction.prompt import build_harness_prompt, build_relight_prompt
+from zir_image_enhancer.reconstruction.prompt import build_harness_prompt
 from zir_image_enhancer.reconstruction.reconstructor import (
     ReconstructionSettings,
     Reconstructor,
@@ -68,20 +68,20 @@ def test_gate_reports_worn_shape(tmp_path: Path) -> None:
     assert not result.passed
 
 
-def test_relight_pass_uses_packshot_as_only_reference(tmp_path: Path) -> None:
+def test_gate_problem_triggers_one_repair_with_the_fix(tmp_path: Path) -> None:
     front = tmp_path / "01_front.jpg"
     Image.new("RGB", (8, 12), "red").save(front)
-    vision = FakeVision({"spec": {"category": "T-shirt"}, "gate": {}})
+    vision = FakeVision(
+        {"spec": {"category": "T-shirt"}, "gate": {"colour_ok": False, "fix": "redder"}}
+    )
     generator = FakeGenerator()
-    settings = ReconstructionSettings(relight=True)
-    reconstructor = Reconstructor(settings, generator, cast(VisionClient, vision))
+    reconstructor = Reconstructor(ReconstructionSettings(), generator, cast(VisionClient, vision))
     result = reconstructor.run(GarmentItem("g1", (front,), None), tmp_path / "work")
 
     assert len(generator.requests) == 2
-    relight = generator.requests[1]
-    assert relight.prompt == build_relight_prompt()
-    assert relight.images == (tmp_path / "work" / "attempt_1.png",)
-    assert result.final.name == "attempt_relight.png"
+    assert generator.requests[1].prompt.endswith("fix them: redder")
+    # Same number of problems: the repair is kept.
+    assert result.final.name == "attempt_2.png"
 
 
 def test_spec_reads_the_pieces_of_a_set(tmp_path: Path) -> None:

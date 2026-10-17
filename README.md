@@ -92,46 +92,40 @@ local/fal_cache/                every paid fal result, so nothing is paid twice
 local/fal_ledger.jsonl          one line per paid call; the budget guard reads it
 ```
 
-## Pipelines
+## Run the app
 
-| Command | What it does | Holdout | $/garment |
-|---|---|---|---|
-| `scripts/run_pipeline.py --split dev` | Vision triage picks the front, nano-banana 2.1 (2:3) with `studio-style-v2`, export and validation | 61.82 | 0.06 |
-| `scripts/reconstruct.py --split holdout --run <name>` | Garment spec, studio prompt plus geometry, flattening and details, named detail photos, quality gate with one repair | 61.77 (24 of 38) | 0.07 |
-| same with `--relight` | Second pass that only changes the light | not tested | +0.06 |
-
-Always add `--dry-run` first where available: it prints the number of calls and the cost.
-
-Detail photos are named by the user: `01_front.jpg`, `02_back.jpg`, `03_detail_chest-logo.jpg`. Only named detail photos are sent to the model.
-
-The Gradio app and `zir-run` (`make run`) use the harness through `pipeline.StudioPipeline`. Each run keeps its photos and attempts in `local/app_runs/<name>/`.
-
-### Test day (our own captures)
-
-Start the app (`zir-app`, or `GRADIO_SHARE=1 zir-app` for a phone link), upload the front first, then the back and the close-ups, and optionally type one role per photo (`front`, `back`, `detail chest logo`). The log shows what the pipeline understood and what the gate found.
-
-For the whole set at once, one folder per garment in `local/captures/`:
+Copy `.env.example` to `.env`, fill in `FAL_KEY`, then from the repo root:
 
 ```bash
-python scripts/make_capture_manifest.py --photos local/captures
+uv run zir-app
+```
+
+Open `http://localhost:7860` (or start it with `GRADIO_SHARE=1` for an https link a phone can open). Upload the front photo first, then the back and close-ups of details, and optionally type one role per photo (`front`, `back`, `detail chest logo`). Detail photos are only used when they have a role, typed in the app or in the file name (`03_detail_chest-logo.jpg`). The log shows what the pipeline understood and what the gate found; each run keeps its photos and attempts in `local/app_runs/<name>/`.
+
+How the pipeline works, step by step: spec (Gemini 2.5 Flash) → studio prompt plus proportions, flattening, details and sets → nano-banana 2.1 → quality gate (Gemini) → one repair if needed. Every prompt we tried, with its results, is in [docs/PROMPTS.md](docs/PROMPTS.md).
+
+### A whole set at once
+
+One folder per garment in `local/captures/`:
+
+```bash
+uv run python scripts/make_capture_manifest.py --photos local/captures
 ```
 
 ```bash
-zir-run --manifest local/captures/inputs.jsonl --out local/submissions --team d3a24 --dry-run
+uv run zir-run --manifest local/captures/inputs.jsonl --out local/submissions --team d3a24
 ```
 
-## Experiments and scoring
+Spending stops at `ZIR_FAL_BUDGET_USD` (counted in `local/fal_ledger.jsonl`). The ledger uses estimated prices and has under-counted the real fal bill.
+
+## Evaluate on the holdout
 
 | Script | Use |
 |---|---|
-| `generate.py` | One run: `--model`, `--prompt`, `--inputs` (`first`, `first-usable`, `triage`, `all`), `--samples K` |
-| `score_run.py --run <name> [--pairs <file>]` | Official scorer on every `cand_<k>`; appends to `experiments/results.csv` |
-| `relight_run.py` | Relight outputs of an existing run (one call per garment) |
-| `contact_sheet.py` | Input, output and target side by side |
-| `export_submission.py` | Any run to the submission layout, validated |
-| `cutout_run.py`, `select_capture_style.py` | Zero-cost analysis runs |
-
-Spending stops at `ZIR_FAL_BUDGET_USD`. The ledger uses estimated prices and has under-counted the real fal bill.
+| `reconstruct.py --run <name> [--ids ...]` | The app's pipeline over the holdout, in the scorer's layout, with a report per garment |
+| `score_run.py --run <name> [--pairs <file>]` | Official scorer on the run; appends to `experiments/results.csv` |
+| `compare_sheet.py --runs <a> <b> ...` | Pages with input, each run's output and score, and the target |
+| `gallery.py` | One folder per garment with its inputs, every output and the target |
 
 ## Findings (holdout, 38 pairs grouped by target)
 
@@ -141,12 +135,13 @@ Gaps under about 1.5 points are within noise. Official dev numbers: identity 48.
 |---|---|---|
 | Input unchanged | 39.78 | floor |
 | Official baseline (nano-banana 2.1, first photo) | 60.22 | |
-| **Pipeline: portrait canvas, `studio-style-v2`** | **61.82** | +1.6, 25 of 38 wins |
+| **One-shot: portrait canvas, `studio-style-v2`** | **61.82** | +1.6, 25 of 38 wins |
 | nano-banana Pro | 61.23 | 2.5x the price |
 | Seedream 4.5 / FLUX.2 / Qwen-Image-Edit-2511 | 49.6 / 43.4 / 54.4 | change the garment |
-| Harness (spec, gate, repair), 24 garments | 61.77 | pipeline on the same 24: 62.34 |
+| Harness (spec, gate, repair), 24 garments | 61.77 | one-shot on the same 24: 62.34 |
+| Harness v2 (+ flatten, length, vivid colour, single zip) | 60.40 | length rule made tops too long; reverted to harness + flatten + sets |
 
-What was tried and removed from the code (still in tag `exp-snapshot-2026-10-17`):
+What was tried and removed from the code (still in the tags `exp-snapshot-2026-10-17` and `pre-cleanup-2026-10-17`):
 
 | Idea | Effect |
 |---|---|
@@ -155,13 +150,15 @@ What was tried and removed from the code (still in tag `exp-snapshot-2026-10-17`
 | Colour correction after generation (learned model, average offset) | -6 to -14, -0.6 to -1.2 |
 | Light correction after generation (shading removal, shadow lift) | -0.2 to -1.5 |
 | CLIP photo choice (`best`, `filtered`) | picked the back on 5 of 15 test garments |
+| Relight pass after generation | -1.5 on 8 garments, barely visible |
+| One-shot pipeline scripts (`run_pipeline.py`, `generate.py`, triage) | replaced by the harness in the app |
 
 Other results:
 
 - Vision triage picks the front in any photo order (61.67 against 60.22 for the first photo when the photos are shuffled).
 - Unnamed close-ups pulled the colour (-2.1), so only named detail photos are used.
 - The model already corrects most of the light: garment L* error drops from 12.9 (input) to 5.6 (output). What is left has no fixed sign (7 garments too dark, 9 too light) and cannot be predicted from the photos, so a phone photo alone does not give the studio colour. Capture quality is the lever.
-- The harness is 0.6 below the pipeline on the same 24 garments (within noise). It is kept because it repairs invented or missing details, which the jury judges and the metric barely sees.
+- The harness is 0.6 below the one-shot pipeline on the same 24 garments (within noise). It is kept because it repairs invented or missing details, which the jury judges and the metric barely sees.
 
 ## Optional dependency groups
 
@@ -169,8 +166,6 @@ All groups are installed in the image. If you install outside the container:
 
 | Group | What for |
 |---|---|
-| `generative` | Optional creative mode (diffusers, accelerate) |
-| `eval` | Metrics and plots (pyiqa, pandas, matplotlib) |
 | `scorer` | The vendored frozen Sartiq scorer and its dependencies (scipy, lpips, open_clip_torch, rembg, onnxruntime, tqdm) |
 | `dev` | ruff, mypy, pytest, pre-commit |
 

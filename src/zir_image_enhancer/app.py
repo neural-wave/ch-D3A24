@@ -142,7 +142,6 @@ def _enhance(
     gallery: list[str | tuple[str, str | None]] | None,
     camera: np.ndarray | None,
     roles_text: str,
-    relight: bool,
 ) -> tuple[tuple[np.ndarray, np.ndarray] | None, str, str, str | None]:
     """Run the studio pipeline on the gathered photos and return the UI outputs."""
     photos = _collect_photos(gallery, camera)
@@ -151,7 +150,7 @@ def _enhance(
     roles = (roles_text or "").splitlines()
     name = time.strftime("app-%Y%m%d-%H%M%S")
     try:
-        result = _get_pipeline().run(photos, name, roles=roles, relight=relight)
+        result = _get_pipeline().run(photos, name, roles=roles)
     except MissingKeyError as error:
         return None, _EMPTY_LOG, _ERROR_STATUS.format(error=error), None
     except Exception as error:  # noqa: BLE001
@@ -210,7 +209,6 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
                 placeholder="front\nback\ndetail chest logo",
                 lines=3,
             )
-            relight = gr.Checkbox(label="Extra studio-light pass (slower)", value=False)
             with gr.Row():
                 clear_btn = gr.Button("Clear", variant="secondary")
                 run_btn = gr.Button(
@@ -236,7 +234,7 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
 
     run_btn.click(
         _enhance,
-        inputs=[gallery, camera, roles, relight],
+        inputs=[gallery, camera, roles],
         outputs=[slider, log, status, download],
     )
     clear_btn.click(

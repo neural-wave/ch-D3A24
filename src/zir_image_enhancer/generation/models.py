@@ -1,4 +1,4 @@
-"""Hosted edit models we compare, and how to call each one."""
+"""The hosted edit model and how to call it (other models we tried: README findings)."""
 
 from __future__ import annotations
 
@@ -47,64 +47,6 @@ MODELS: dict[str, ModelSpec] = {
             0.06,
             True,
             {"aspect_ratio": "2:3"},
-        ),
-        # The other models also get a portrait canvas, so the comparison is between models
-        # and not between canvas shapes. Prices are from each model's fal page.
-        ModelSpec(
-            "nano-banana-pro",
-            "fal-ai/nano-banana-pro/edit",
-            14,
-            0.15,
-            True,
-            {"aspect_ratio": "2:3"},
-        ),
-        # FLUX.2 [dev] edit reads at most 4 images and bills $0.012 per megapixel on every
-        # input (resized to 1 MP) and on the output, so 4 inputs + a 1.6 MP output is ~$0.07.
-        ModelSpec(
-            "flux-2",
-            "fal-ai/flux-2/edit",
-            4,
-            0.07,
-            True,
-            {"image_size": {"width": 1024, "height": 1536}},
-        ),
-        # Open-weight Qwen-Image-Edit-2511 (Apache 2.0) through fal, so it can be tested in
-        # minutes instead of setting up a GPU. $0.035 per megapixel; 1024x1536 is ~1.6 MP.
-        ModelSpec(
-            "qwen-2511",
-            "fal-ai/qwen-image-edit-2511/lora",
-            3,
-            0.06,
-            True,
-            {"image_size": {"width": 1024, "height": 1536}},
-        ),
-        # Same model with the community "Extract-Outfit" LoRA (Apache 2.0), trained to turn a
-        # worn garment into a flat mockup; the closest public match to our task.
-        ModelSpec(
-            "qwen-2511-outfit",
-            "fal-ai/qwen-image-edit-2511/lora",
-            3,
-            0.06,
-            True,
-            {
-                "image_size": {"width": 1024, "height": 1536},
-                "loras": [
-                    {
-                        "path": "https://huggingface.co/prithivMLmods/QIE-2511-Extract-Outfit"
-                        "/resolve/main/QIE-2511-Extract-Outfit-4200.safetensors",
-                        "scale": 1.0,
-                    }
-                ],
-            },
-        ),
-        # Seedream needs at least 1920 px per side (or a large total pixel count).
-        ModelSpec(
-            "seedream-4.5",
-            "fal-ai/bytedance/seedream/v4.5/edit",
-            10,
-            0.04,
-            True,
-            {"image_size": {"width": 1920, "height": 2880}},
         ),
     )
 }
