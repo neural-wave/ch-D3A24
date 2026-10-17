@@ -1,0 +1,144 @@
+"""One garment through the reconstruction pipeline: spec, colours, references, generation, gate.
+
+photos -> spec (vision) -> colours (pixels) -> references (front, named details, crops)
+       -> generate (nano-banana) -> quality gate -> one repair if it fails
+"""
+
+from __future__ import annotations
+
+import threading
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from zir_image_enhancer.dataset import GarmentItem
+from zir_image_enhancer.generation.fal_backend import GenerationRequest, GenerationResult, Generator
+from zir_image_enhancer.generation.models import get_model
+from zir_image_enhancer.generation.prompts import build_prompt
+from zir_image_enhancer.reconstruction.colour import ColourMeter, MeasuredColour
+from zir_image_enhancer.reconstruction.gate import GateResult, check
+from zir_image_enhancer.reconstruction.photos import roles_from_filenames
+from zir_image_enhancer.reconstruction.prompt import build_reconstruction_prompt
+from zir_image_enhancer.reconstruction.references import Reference, build_references
+from zir_image_enhancer.reconstruction.spec import GarmentSpec, extract_spec
+from zir_image_enhancer.reconstruction.vision import VisionClient
+
+
+@dataclass(frozen=True)
+class ReconstructionSettings:
+    model_key: str = "nano-banana-2.1-portrait"
+    use_colours: bool = True
+    use_crops: bool = True
+    use_detail_photos: bool = True
+    gate: bool = True
+    max_references: int = 4
+    seed: int = 0
+    # "style": generate with the studio prompt and the front photo only, and use the spec
+    # only to check the result (and to write the fix for a repair). "spec": put the spec,
+    # colours and crops into the generation prompt (measured -3.0 on the holdout).
+    prompt_mode: str = "style"
+
+
+@dataclass(frozen=True)
+class Attempt:
+    prompt: str
+    references: tuple[str, ...]
+    image: Path
+    gate: GateResult | None
+    cost_usd: float
+
+
+@dataclass(frozen=True)
+class ReconstructionResult:
+    final: Path
+    spec: GarmentSpec
+    colours: tuple[MeasuredColour, ...]
+    attempts: tuple[Attempt, ...]
+    seconds: float
+    cost_usd: float = field(default=0.0)
+
+
+class Reconstructor:
+    def __init__(
+        self,
+        settings: ReconstructionSettings,
+        generator: Generator,
+        vision: VisionClient,
+        cache_dir: Path,
+        colour_meter: ColourMeter | None = None,
+    ) -> None:
+        self._settings = settings
+        self._generator = generator
+        self._vision = vision
+        self._cache_dir = cache_dir
+        self._colour_meter = colour_meter
+        self._model = get_model(settings.model_key)
+        # The segmenter session is shared by the worker threads; one at a time is safest.
+        self._colour_lock = threading.Lock()
+
+    def run(self, item: GarmentItem, workdir: Path) -> ReconstructionResult:
+        started = time.perf_counter()
+        spec = extract_spec(roles_from_filenames(item.inputs), self._vision)
+        colours: tuple[MeasuredColour, ...] = ()
+        if self._settings.use_colours and self._colour_meter is not None:
+            with self._colour_lock:
+                colours = self._colour_meter.measure(spec.front, spec.garment_box)
+        if self._settings.prompt_mode == "style":
+            references: tuple[Reference, ...] = (
+                Reference(spec.front, "the whole garment from the front"),
+            )
+        else:
+            references = build_references(
+                spec,
+                self._cache_dir,
+                max_references=self._settings.max_references,
+                use_detail_photos=self._settings.use_detail_photos,
+                use_crops=self._settings.use_crops,
+            )
+
+        workdir.mkdir(parents=True, exist_ok=True)
+        first = self._attempt(spec, references, colours, workdir, sample=0, fix="")
+        attempts = [first]
+        final = first
+        if first.gate is not None and first.gate.severe:
+            fix = first.gate.fix or "; ".join(first.gate.severe)
+            repair = self._attempt(spec, references, colours, workdir, sample=1, fix=fix)
+            attempts.append(repair)
+            # Keep the repair unless the gate thinks it got worse.
+            if repair.gate is None or len(repair.gate.severe) <= len(first.gate.severe):
+                final = repair
+
+        cost = spec.cost_usd + sum(
+            a.cost_usd + (a.gate.cost_usd if a.gate else 0.0) for a in attempts
+        )
+        return ReconstructionResult(
+            final.image, spec, colours, tuple(attempts), time.perf_counter() - started, cost
+        )
+
+    def _attempt(
+        self,
+        spec: GarmentSpec,
+        references: tuple[Reference, ...],
+        colours: tuple[MeasuredColour, ...],
+        workdir: Path,
+        sample: int,
+        fix: str,
+    ) -> Attempt:
+        if self._settings.prompt_mode == "style":
+            prompt = build_prompt("studio-style-v2", len(references))
+            if fix:
+                prompt += f" A previous attempt had these problems; fix them: {fix}"
+        else:
+            prompt = build_reconstruction_prompt(spec, references, colours, fix)
+        request = GenerationRequest(
+            self._model,
+            prompt,
+            tuple(ref.path for ref in references),
+            self._settings.seed + sample,
+            sample,
+        )
+        result: GenerationResult = self._generator.generate(request)
+        image = workdir / f"attempt_{sample + 1}.png"
+        image.write_bytes(result.png_bytes)
+        gate = check(spec.front, image, spec, self._vision) if self._settings.gate else None
+        return Attempt(prompt, tuple(str(r.path) for r in references), image, gate, result.cost_usd)

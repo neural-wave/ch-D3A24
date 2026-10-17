@@ -92,7 +92,7 @@ python scripts/run_pipeline.py --split dev
 What it does for each garment:
 
 1. Picks one photo: the front, chosen by a vision model (Gemini 2.5 Flash through fal's OpenRouter endpoint, about $0.001 per garment) that sees all the photos of the garment at once (`--inputs triage`). It also flags fine details (small text, logos) in `triage.jsonl` so they are checked first. If the call fails, the first photo is used.
-2. Sends them to nano-banana 2.1 (fal) on a 2:3 portrait canvas with the `sartiq-style-v2` prompt: Sartiq's catalogue style written as rules per garment type (sleeves down along the body, closures done up, trouser legs straight and parallel, light-grey background, whole garment visible).
+2. Sends them to nano-banana 2.1 (fal) on a 2:3 portrait canvas with the `studio-style-v2` prompt: generic studio catalogue conventions written as rules per garment type (text only, no target images) (sleeves down along the body, closures done up, trouser legs straight and parallel, light-grey background, whole garment visible).
 3. Converts the result to PNG and exports it in the official layout, then runs the official validator.
 
 Cost: about $0.06 per garment. Results are cached by content, so reruns are free.
@@ -108,11 +108,11 @@ python scripts/make_capture_manifest.py --photos local/captures
 ```
 
 ```bash
-python scripts/run_pipeline.py --split test --captures local/captures/inputs.jsonl --wb-card bottom-right --prompt sartiq-flat-v1 --run test_captures --dry-run
+python scripts/run_pipeline.py --split test --captures local/captures/inputs.jsonl --wb-card bottom-right --prompt studio-flat-v1 --run test_captures --dry-run
 ```
 
 - `--wb-card <corner>` measures the card, removes the colour cast (in linear light, brightness kept) and paints the card out before generation.
-- `--prompt sartiq-flat-v1` tells the model the photo is already a flat-lay with correct colours and asks it to change as little as possible.
+- `--prompt studio-flat-v1` tells the model the photo is already a flat-lay with correct colours and asks it to change as little as possible.
 - Without `--captures`, the pipeline uses the photos supplied by the organisers.
 
 ## Generation experiments
@@ -138,7 +138,7 @@ python scripts/contact_sheet.py --run holdout_nb21_baseline --split holdout
 - `generate.py` writes `local/runs/<run>/cand_<k>/<id>/front.png`; `--samples K` gives K candidates per garment, `--inputs all` sends every photo of the garment.
 - `score_run.py` scores each candidate with the official scorer and appends one row to `experiments/results.csv`, including `best_of_k` (the score if we always picked the best candidate).
 - Spending stops at `ZIR_FAL_BUDGET_USD` (default $70, counted in `local/fal_ledger.jsonl`).
-- Models: `nano-banana-2.1` (official baseline), `nano-banana-2.1-portrait` (2:3 canvas), `nano-banana-pro`, `flux-2`, `seedream-4.5`. Prompts: `baseline` (official), `studio-white-v1`, `sartiq-style-v2`.
+- Models: `nano-banana-2.1` (official baseline), `nano-banana-2.1-portrait` (2:3 canvas), `nano-banana-pro`, `flux-2`, `seedream-4.5`. Prompts: `baseline` (official), `studio-white-v1`, `studio-style-v2`.
 - `--preprocess cutout|crop|denoise` changes the photo before it is sent (see findings: all three hurt).
 - `--inputs filtered` keeps only full front views, chosen by local CLIP (`preprocess/photo_filter.py`); it drops tags, barcodes, bags and close-ups.
 - `--manifest <file>` runs on any manifest; `score_run.py --pairs <file>` scores against it.
@@ -161,14 +161,14 @@ Paired differences are against the same 38 garments; with this sample size, gaps
 | pipeline + mild OpenCV denoise (`--preprocess denoise`) | 59.95 | 0.62 | 0.33 | 0.73 | 0.83 | 0.06 |
 | same, re-framed on grey after generation | 60.13 | 0.61 | 0.36 | 0.72 | 0.84 | 0.06 |
 | nano-banana Pro, `studio-white-v1`, all photos | 61.23 | 0.62 | 0.36 | 0.75 | 0.83 | 0.15 |
-| **nano-banana 2.1 portrait, `sartiq-style-v2`, all photos** | **61.82** | **0.64** | 0.35 | 0.75 | 0.85 | 0.06 |
+| **nano-banana 2.1 portrait, `studio-style-v2`, all photos** | **61.82** | **0.64** | 0.35 | 0.75 | 0.85 | 0.06 |
 | Seedream 4.5, `studio-white-v1`, all photos | 49.59 | 0.49 | 0.24 | 0.65 | 0.73 | 0.04 |
 | FLUX.2 [dev], `studio-white-v1`, all photos | 43.36 | 0.34 | 0.25 | 0.59 | 0.73 | 0.07 |
 
 What we learned (official dev numbers: identity 48.37, one-shot baseline 68.71):
 
 - **Generation is needed.** Without it the garment keeps the hanger or mannequin pose, and silhouette and LPIPS stay at the level of the raw photo.
-- **The Sartiq-style prompt is the best change so far:** +1.6 over the official baseline (wins on 25 of 38 garments) at the same cost.
+- **The studio-style prompt is the best change so far:** +1.6 over the official baseline (wins on 25 of 38 garments) at the same cost.
 - **Pro is not worth 2.5x the price** here, and FLUX.2 and Seedream change the garment (wrong colour, extra trousers from the mannequin, a sweater turned into a cardigan).
 - **Cutting the garment out before generation hurts** (-3.9, wins on 13 of 38): the model loses context and colour. Re-framing after generation does not help either.
 - **Picking among candidates is not worth paying for yet.** The best of 4 nano-banana outputs would score 64.83, but choosing without the reference (scoring each candidate against the garment's own photos) only reaches 61.41 against 60.85 for a random pick.
@@ -195,7 +195,16 @@ What we learned (official dev numbers: identity 48.37, one-shot baseline 68.71):
   `best` does not depend on the order, but on the test set it picked the back for 5 of 15 garments (CLIP cannot tell the front of a hanging garment from its back; g12's back has a large print). The vision model compares the photos side by side, picks the front on all 15 test garments, and is the best policy in both orders, so it is the pipeline default. `first-usable` stays as the fallback when the call fails.
 - **Close-ups of fine details do not help the score.** Sending the front plus close-ups of its prints or logos (`--max-closeups 2`) lowered the score by 2.09 on the 11 garments that had them (4 of 11 wins); telling the model to take colour only from the full photo brought it to -1.81. The close-ups are often lit differently and pull the colour (a black T-shirt came out grey), and the details were not visibly more faithful.
 - **Open model (Qwen-Image-Edit-2511, Apache 2.0, via fal):** 54.37 without LoRA (it changes the garment type: a skirt became a shirt dress), 39.69 with the public "Extract-Outfit" LoRA (it invents a full outfit). A LoRA trained on our pairs is the only open route left.
-- **Prompt for flat-lay captures.** On the 22 holdout-train pairs whose first photo is a flat-lay (picked by CLIP, checked by eye), `sartiq-flat-v1` scores 61.29 against 60.74 for `sartiq-style-v2` (+0.54, 11 of 22 wins, within noise) with better texture (LPIPS 0.373 vs 0.349). It is the prompt for our own flat-lay captures.
+- **Reconstruction from a garment spec (`scripts/reconstruct.py`).** One vision call extracts category, construction and details (with boxes); a quality gate checks the output. Holdout, paired against the pipeline (61.82):
+
+  | Variant | Score | Diff |
+  |---|---|---|
+  | Spec in the prompt + detail crops + gate | 58.84 | -2.99 (9 of 38 wins) |
+  | Same + measured hex colours | 57.16 | -4.66 |
+  | Studio prompt + front only; spec used only by the gate (`--prompt-mode style`) | 61.46 | -0.37 |
+
+  Writing the spec into the prompt forces any spec error and makes the model rely less on the photo. Hex colours carry the photo's colour cast (use them only with `--wb-card`). The gate flags mostly minor issues (button counts); repairing those scored -2, so it now repairs only severe problems (different garment, back view, extra items, invented text) and reports the rest.
+- **Prompt for flat-lay captures.** On the 22 holdout-train pairs whose first photo is a flat-lay (picked by CLIP, checked by eye), `studio-flat-v1` scores 61.29 against 60.74 for `studio-style-v2` (+0.54, 11 of 22 wins, within noise) with better texture (LPIPS 0.373 vs 0.349). It is the prompt for our own flat-lay captures.
 - **No stable colour bias to correct.** An average offset learned on 43 train outputs (studio photos about 1.9 L* brighter than our outputs) is the opposite of what the holdout showed earlier (outputs 2.5 L* brighter). Applying it to the holdout lowers the score by 0.6 to 1.2 (clearly negative). Post-generation colour tweaks are out.
 - **Grey-card white balance cannot be measured on the dataset** (no photo has a card). It is in the pipeline as `--wb-card` and is judged on our own captures against the physical garment.
 

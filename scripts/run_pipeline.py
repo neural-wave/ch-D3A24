@@ -21,7 +21,7 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent
 
 DEFAULT_MODEL = "nano-banana-2.1-portrait"
-DEFAULT_PROMPT = "sartiq-style-v2"
+DEFAULT_PROMPT = "studio-style-v2"
 DEFAULT_INPUTS = "triage"
 DEFAULT_SEED = 0
 
@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
         help="manifest of our own photos (make_capture_manifest.py) instead of the supplied ones",
     )
     parser.add_argument(
-        "--prompt", default=DEFAULT_PROMPT, help="e.g. sartiq-flat-v1 for flat-lay captures"
+        "--prompt", default=DEFAULT_PROMPT, help="e.g. studio-flat-v1 for flat-lay captures"
     )
     parser.add_argument(
         "--wb-card",

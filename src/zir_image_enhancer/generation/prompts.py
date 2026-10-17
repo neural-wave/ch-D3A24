@@ -33,7 +33,7 @@ _STUDIO_WHITE_V1 = (
 # straight down at the sides, closures done up, trouser legs straight and parallel, light-grey
 # studio background, portrait frame. One prompt with rules per garment type, so no classifier
 # is needed in front of it.
-_SARTIQ_STYLE_V2 = (
+_STUDIO_STYLE_V2 = (
     "Turn the {source} of this garment into a fashion catalogue packshot. "
     "{references}"
     "Show only the garment, front view, centred and symmetric, laid flat and shot straight "
@@ -53,7 +53,7 @@ _SARTIQ_STYLE_V2 = (
 # colour balanced with a grey card). The model is asked to change as little as possible:
 # keep the layout and colours it sees, only clean the scene and the light. Less to invent
 # means fewer hallucinated details and colour drift.
-_SARTIQ_FLAT_V1 = (
+_STUDIO_FLAT_V1 = (
     "The {source} already shows this garment laid flat and shot from above, with correct "
     "colours. {references}"
     "Turn it into a fashion catalogue packshot while changing as little as possible: keep the "
@@ -87,8 +87,12 @@ _DETAIL_REFERENCES = (
 TEMPLATES: dict[str, str] = {
     "baseline": _BASELINE,
     "studio-white-v1": _STUDIO_WHITE_V1,
-    "sartiq-style-v2": _SARTIQ_STYLE_V2,
-    "sartiq-flat-v1": _SARTIQ_FLAT_V1,
+    # Generic studio catalogue conventions, written as text (no target pixels are ever used).
+    "studio-style-v2": _STUDIO_STYLE_V2,
+    "studio-flat-v1": _STUDIO_FLAT_V1,
+    # Old names, kept so earlier runs in experiments/results.csv can be reproduced.
+    "sartiq-style-v2": _STUDIO_STYLE_V2,
+    "sartiq-flat-v1": _STUDIO_FLAT_V1,
 }
 
 
