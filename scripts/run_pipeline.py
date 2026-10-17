@@ -4,9 +4,10 @@
     python scripts/run_pipeline.py --split test
 
 Uses the configuration that scored best on our holdout (see the README):
-nano-banana 2.1 on a 2:3 portrait canvas, the Sartiq-style prompt and one photo: the first
-one that shows the whole garment, skipping tags, bags and close-ups (local CLIP). More photos
-scored lower on multi-photo train pairs, and CLIP alone cannot tell a front from a back.
+nano-banana 2.1 on a 2:3 portrait canvas, the Sartiq-style prompt and one photo: the front,
+chosen by a vision model that sees all the photos of the garment at once (Gemini Flash via
+fal, about $0.001 per garment). More photos scored lower on multi-photo train pairs, and CLIP
+picked the back for 5 of 15 test garments.
 Results are cached, so a rerun only pays for garments that changed.
 """
 
@@ -21,7 +22,7 @@ SCRIPTS = Path(__file__).resolve().parent
 
 DEFAULT_MODEL = "nano-banana-2.1-portrait"
 DEFAULT_PROMPT = "sartiq-style-v2"
-DEFAULT_INPUTS = "first-usable"
+DEFAULT_INPUTS = "triage"
 DEFAULT_SEED = 0
 
 
@@ -40,7 +41,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--inputs",
         default=None,
-        choices=["first", "first-usable", "best", "all", "filtered"],
+        choices=["first", "first-usable", "triage", "best", "all", "filtered"],
         help=(
             f"which photos to send (default: '{DEFAULT_INPUTS}'; on test the second supplied "
             "photo is always the back, which can leak a back print onto the front)"

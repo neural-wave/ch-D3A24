@@ -73,6 +73,17 @@ _MULTI_REFERENCES = (
     "front view. "
 )
 
+# Used when the photo triage found fine details on the front and close-ups of them. The model
+# is told what each image is, so it copies the real letters and shapes instead of guessing
+# them from a small, blurry area of the full photo.
+_DETAIL_REFERENCES = (
+    "Image 1 shows the whole garment from the front. Images 2 to {last} are close-ups of "
+    "details on the front of the same garment ({details}). Use the close-ups only for the "
+    "shapes of those details: same letters, numbers and drawing, at the position and size they "
+    "have in image 1. Take every colour and the brightness of the garment and of its details "
+    "from image 1 only, because the close-ups may be lit differently. Output one front view. "
+)
+
 TEMPLATES: dict[str, str] = {
     "baseline": _BASELINE,
     "studio-white-v1": _STUDIO_WHITE_V1,
@@ -81,13 +92,22 @@ TEMPLATES: dict[str, str] = {
 }
 
 
-def build_prompt(template_key: str, n_references: int) -> str:
+def build_prompt(
+    template_key: str, n_references: int, detail_closeups: int = 0, details: str = ""
+) -> str:
     if template_key not in TEMPLATES:
         raise KeyError(f"Unknown prompt '{template_key}'. Choose one of: {', '.join(TEMPLATES)}")
     template = TEMPLATES[template_key]
     if template_key == "baseline":
         # The baseline prompt is kept verbatim on purpose, whatever the number of photos.
         return template
+    if detail_closeups > 0:
+        return template.format(
+            source="reference photos",
+            references=_DETAIL_REFERENCES.format(
+                last=detail_closeups + 1, details=details or "print, logo or text"
+            ),
+        )
     if n_references > 1:
         return template.format(
             source="reference photos",

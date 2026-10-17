@@ -91,7 +91,7 @@ python scripts/run_pipeline.py --split dev
 
 What it does for each garment:
 
-1. Picks one photo: the first one that shows the whole garment, skipping tags, barcodes, bags and close-ups with local CLIP (`--inputs first-usable`). The photo order decides front versus back, because CLIP cannot tell them apart on hanging garments. Sending more photos scored lower (see findings). `--inputs first|best|all|filtered` are still available.
+1. Picks one photo: the front, chosen by a vision model (Gemini 2.5 Flash through fal's OpenRouter endpoint, about $0.001 per garment) that sees all the photos of the garment at once (`--inputs triage`). It also flags fine details (small text, logos) in `triage.jsonl` so they are checked first. If the call fails, the first photo is used.
 2. Sends them to nano-banana 2.1 (fal) on a 2:3 portrait canvas with the `sartiq-style-v2` prompt: Sartiq's catalogue style written as rules per garment type (sleeves down along the body, closures done up, trouser legs straight and parallel, light-grey background, whole garment visible).
 3. Converts the result to PNG and exports it in the official layout, then runs the official validator.
 
@@ -190,8 +190,11 @@ What we learned (official dev numbers: identity 48.37, one-shot baseline 68.71):
   | First photo (`first`) | **61.46** | 60.22 |
   | First photo that is a whole garment (`first-usable`, pipeline) | **61.46** | 60.30 |
   | Most "front-looking" photo by CLIP (`best`) | 61.19 | **61.19** |
+  | **Front chosen by a vision model (`triage`, pipeline)** | **61.70** | **61.67** |
 
-  `best` does not depend on the order, but on the test set it picked the back for 5 of 15 garments (CLIP cannot tell the front of a hanging garment from its back; g12's back has a large print). So the pipeline uses `first-usable`: the capture protocol says photo 1 is the front, and CLIP only protects against a tag or bag being first. A better front/back check would remove the dependence on order.
+  `best` does not depend on the order, but on the test set it picked the back for 5 of 15 garments (CLIP cannot tell the front of a hanging garment from its back; g12's back has a large print). The vision model compares the photos side by side, picks the front on all 15 test garments, and is the best policy in both orders, so it is the pipeline default. `first-usable` stays as the fallback when the call fails.
+- **Close-ups of fine details do not help the score.** Sending the front plus close-ups of its prints or logos (`--max-closeups 2`) lowered the score by 2.09 on the 11 garments that had them (4 of 11 wins); telling the model to take colour only from the full photo brought it to -1.81. The close-ups are often lit differently and pull the colour (a black T-shirt came out grey), and the details were not visibly more faithful.
+- **Open model (Qwen-Image-Edit-2511, Apache 2.0, via fal):** 54.37 without LoRA (it changes the garment type: a skirt became a shirt dress), 39.69 with the public "Extract-Outfit" LoRA (it invents a full outfit). A LoRA trained on our pairs is the only open route left.
 - **Prompt for flat-lay captures.** On the 22 holdout-train pairs whose first photo is a flat-lay (picked by CLIP, checked by eye), `sartiq-flat-v1` scores 61.29 against 60.74 for `sartiq-style-v2` (+0.54, 11 of 22 wins, within noise) with better texture (LPIPS 0.373 vs 0.349). It is the prompt for our own flat-lay captures.
 - **No stable colour bias to correct.** An average offset learned on 43 train outputs (studio photos about 1.9 L* brighter than our outputs) is the opposite of what the holdout showed earlier (outputs 2.5 L* brighter). Applying it to the holdout lowers the score by 0.6 to 1.2 (clearly negative). Post-generation colour tweaks are out.
 - **Grey-card white balance cannot be measured on the dataset** (no photo has a card). It is in the pipeline as `--wb-card` and is judged on our own captures against the physical garment.

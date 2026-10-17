@@ -14,6 +14,7 @@ Examples (from the repo root):
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from collections.abc import Callable
@@ -28,6 +29,7 @@ from zir_image_enhancer.generation.runner import (
     InputSelection,
     PhotoSelector,
     RunConfig,
+    TriagedPhotos,
 )
 from zir_image_enhancer.paths import ProjectPaths
 
@@ -65,6 +67,15 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
             "cutout: garment cut out on white; crop: framed around the garment, real "
             "background kept (both upscale small photos); denoise: mild OpenCV denoise; "
             "wb-card: white balance from a grey card in a fixed corner, card painted out."
+        ),
+    )
+    parser.add_argument(
+        "--max-closeups",
+        type=int,
+        default=0,
+        help=(
+            "close-ups of front details sent with --inputs triage (default 0: on 11 multi-photo "
+            "train pairs they lowered the score by about 2 points)"
         ),
     )
     parser.add_argument(
@@ -137,6 +148,55 @@ def build_photo_selector(inputs: str) -> PhotoSelector | None:
     return select
 
 
+class TriageLog:
+    """Runs the vision triage once per garment and keeps every decision for the run log."""
+
+    def __init__(
+        self, ledger: CostLedger, budget: float, paths: ProjectPaths, max_closeups: int = 0
+    ) -> None:
+        from zir_image_enhancer.preprocess.photo_triage import VisionTriage
+
+        self._triage = VisionTriage(
+            ledger, budget, paths.repo_root / "local" / "triage_cache", max_closeups=max_closeups
+        )
+        self._decisions: dict[tuple[Path, ...], dict[str, object]] = {}
+        self._photos: dict[tuple[Path, ...], TriagedPhotos] = {}
+
+    def __call__(self, photos: tuple[Path, ...]) -> TriagedPhotos:
+        if photos not in self._photos:
+            result = self._triage.triage(photos)
+            self._photos[photos] = TriagedPhotos(
+                result.selected, len(result.detail_closeups), result.details
+            )
+            self._decisions[photos] = {"garment": photos[0].parent.name, **result.to_json()}
+            closeups = ", ".join(path.name for path in result.detail_closeups) or "none"
+            print(
+                f"  triage {photos[0].parent.name}: front {result.front.name}, "
+                f"close-ups {closeups}{'  (fallback)' if result.used_fallback else ''}"
+            )
+            if result.fine_details:
+                # Not an error: a flag for the report and the UI, so a person (or a later
+                # verification step) checks these details in the output first.
+                print(
+                    f"  DETAILS {photos[0].parent.name}: fine details on the front "
+                    f"({result.details}); check them in the output"
+                )
+        return self._photos[photos]
+
+    def write(self, run_dir: Path) -> None:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        lines = (json.dumps(decision) + "\n" for decision in self._decisions.values())
+        (run_dir / "triage.jsonl").write_text("".join(lines), encoding="utf-8")
+
+
+def build_triager(
+    inputs: str, ledger: CostLedger, budget: float, paths: ProjectPaths, max_closeups: int
+) -> TriageLog | None:
+    if inputs != InputSelection.TRIAGE.value:
+        return None
+    return TriageLog(ledger, budget, paths, max_closeups)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     paths = ProjectPaths.from_env()
@@ -164,7 +224,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.dry_run:
         # Built without a generator, so a dry run never needs FAL_KEY.
-        run = GenerationRun(config, None, paths.runs_root, preprocessor, photo_selector)
+        triager = build_triager(args.inputs, ledger, budget, paths, args.max_closeups)
+        run = GenerationRun(config, None, paths.runs_root, preprocessor, photo_selector, triager)
         planned = run.plan(items)
         print(f"run      : {run.run_dir}")
         print(f"garments : {len(items)}   calls: {len(planned)}")
@@ -178,8 +239,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     generator = FalGenerator(cache_dir=paths.fal_cache, ledger=ledger, budget_usd=budget)
-    run = GenerationRun(config, generator, paths.runs_root, preprocessor, photo_selector)
+    triager = build_triager(args.inputs, ledger, budget, paths, args.max_closeups)
+    run = GenerationRun(config, generator, paths.runs_root, preprocessor, photo_selector, triager)
     summary = run.execute(items, workers=args.workers)
+    if triager is not None:
+        triager.write(run.run_dir)
     print(
         f"done: {summary.generated} generated, {summary.from_cache} from cache, "
         f"{summary.failed} failed, ${summary.cost_usd:.2f}, {summary.seconds:.0f}s"

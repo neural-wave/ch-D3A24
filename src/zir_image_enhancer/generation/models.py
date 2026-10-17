@@ -68,6 +68,35 @@ MODELS: dict[str, ModelSpec] = {
             True,
             {"image_size": {"width": 1024, "height": 1536}},
         ),
+        # Open-weight Qwen-Image-Edit-2511 (Apache 2.0) through fal, so it can be tested in
+        # minutes instead of setting up a GPU. $0.035 per megapixel; 1024x1536 is ~1.6 MP.
+        ModelSpec(
+            "qwen-2511",
+            "fal-ai/qwen-image-edit-2511/lora",
+            3,
+            0.06,
+            True,
+            {"image_size": {"width": 1024, "height": 1536}},
+        ),
+        # Same model with the community "Extract-Outfit" LoRA (Apache 2.0), trained to turn a
+        # worn garment into a flat mockup; the closest public match to our task.
+        ModelSpec(
+            "qwen-2511-outfit",
+            "fal-ai/qwen-image-edit-2511/lora",
+            3,
+            0.06,
+            True,
+            {
+                "image_size": {"width": 1024, "height": 1536},
+                "loras": [
+                    {
+                        "path": "https://huggingface.co/prithivMLmods/QIE-2511-Extract-Outfit"
+                        "/resolve/main/QIE-2511-Extract-Outfit-4200.safetensors",
+                        "scale": 1.0,
+                    }
+                ],
+            },
+        ),
         # Seedream needs at least 1920 px per side (or a large total pixel count).
         ModelSpec(
             "seedream-4.5",

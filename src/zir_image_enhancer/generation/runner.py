@@ -38,6 +38,9 @@ class InputSelection(Enum):
     # The first photo that is a whole garment, skipping tags, bags and close-ups. The order
     # still decides front versus back, which CLIP cannot tell apart on hanging garments.
     FIRST_USABLE = "first-usable"
+    # A vision model picks the front and, when the front has fine details (small text, logos),
+    # adds close-ups of them so the edit model copies them instead of inventing them.
+    TRIAGE = "triage"
 
 
 @dataclass(frozen=True)
@@ -69,6 +72,18 @@ class RunSummary:
 PhotoSelector = Callable[[tuple[Path, ...]], tuple[Path, ...]]
 
 
+@dataclass(frozen=True)
+class TriagedPhotos:
+    """What the triage decided for one garment: the front first, then detail close-ups."""
+
+    photos: tuple[Path, ...]
+    detail_closeups: int
+    details: str
+
+
+Triager = Callable[[tuple[Path, ...]], TriagedPhotos]
+
+
 def select_inputs(
     item: GarmentItem,
     selection: InputSelection,
@@ -94,16 +109,19 @@ class GenerationRun:
         runs_root: Path,
         preprocessor: Callable[[Path], Path] | None = None,
         photo_selector: PhotoSelector | None = None,
+        triager: Triager | None = None,
     ) -> None:
         # generator can be None for planning only (dry runs), so no API key is needed.
         # preprocessor maps an input photo to the file actually sent (for example a cut-out);
-        # photo_selector decides which photos are sent when inputs=filtered.
+        # photo_selector decides which photos are sent for filtered/best/first-usable, and
+        # triager does it (with detail close-ups) for inputs=triage.
         self._config = config
         self._generator = generator
         self._run_dir = runs_root / config.name
         self._model = get_model(config.model_key)
         self._preprocessor = preprocessor
         self._photo_selector = photo_selector
+        self._triager = triager
 
     @property
     def run_dir(self) -> Path:
@@ -112,10 +130,18 @@ class GenerationRun:
     def plan(self, items: list[GarmentItem]) -> list[tuple[GarmentItem, GenerationRequest]]:
         planned: list[tuple[GarmentItem, GenerationRequest]] = []
         for item in items:
-            images = select_inputs(item, self._config.inputs, self._model, self._photo_selector)
+            closeups, details = 0, ""
+            if self._config.inputs is InputSelection.TRIAGE:
+                if self._triager is None:
+                    raise ValueError("inputs=triage needs a triager")
+                triaged = self._triager(item.inputs)
+                images = triaged.photos[: self._model.max_references]
+                closeups, details = min(triaged.detail_closeups, len(images) - 1), triaged.details
+            else:
+                images = select_inputs(item, self._config.inputs, self._model, self._photo_selector)
             if self._preprocessor is not None:
                 images = tuple(self._preprocessor(path) for path in images)
-            prompt = build_prompt(self._config.prompt_key, len(images))
+            prompt = build_prompt(self._config.prompt_key, len(images), closeups, details)
             for sample in range(self._config.samples):
                 seed = None if self._config.seed_base is None else self._config.seed_base + sample
                 planned.append((item, GenerationRequest(self._model, prompt, images, seed, sample)))

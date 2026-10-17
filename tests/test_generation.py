@@ -197,3 +197,33 @@ def test_grey_card_left_alone_when_no_card() -> None:
 
     noise = np.random.default_rng(0).integers(0, 255, (300, 300, 3), dtype=np.uint8)
     assert not GreyCardBalancer().balance(Image.fromarray(noise)).applied
+
+
+def test_detail_prompt_names_the_closeups() -> None:
+    prompt = build_prompt("sartiq-style-v2", 3, detail_closeups=2, details="small chest text")
+    assert "Images 2 to 3 are close-ups" in prompt and "small chest text" in prompt
+
+
+def test_triage_reply_is_validated(dataset: Path, tmp_path: Path) -> None:
+    from zir_image_enhancer.preprocess.photo_triage import VisionTriage
+
+    photos = tuple(sorted((dataset / "dev/d001").glob("input_*.jpg")))
+    triage = VisionTriage(CostLedger(tmp_path / "ledger.jsonl"), 1.0, tmp_path / "cache")
+    reply = {
+        "front_index": 2,
+        "photos": [
+            {"index": 1, "view": "back", "whole_garment": True},
+            {"index": 3, "view": "detail_front", "whole_garment": False},
+            {"index": 9, "view": "detail_front"},  # out of range: must be ignored
+            "garbage",
+        ],
+        "fine_details": True,
+        "details": "chest logo",
+    }
+    result = triage._build(photos, reply, 0.0)
+    assert result.front.name == "input_2.jpg"
+    assert [path.name for path in result.selected] == ["input_2.jpg", "input_3.jpg"]
+    assert not result.needs_closeup
+
+    no_closeup = triage._build(photos, {"front_index": "x", "fine_details": True}, 0.0)
+    assert no_closeup.front.name == "input_1.jpg" and no_closeup.needs_closeup
