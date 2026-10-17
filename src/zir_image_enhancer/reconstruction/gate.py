@@ -21,7 +21,7 @@ _SYSTEM = (
 _PROMPT = """Image 1 is the real photo of the garment (front). Image 2 is a generated packshot that
 must show the SAME garment, flat, front view, on a plain light background.
 
-Garment: {category}. {proportions}
+Garment: {category}. Product pieces: {pieces}. {proportions}
 Details that must be present and identical:
 {details}
 
@@ -32,11 +32,13 @@ Return:
   "colour_ok": <false only if the colour or shade clearly changed>,
   "proportions_ok": <false if sleeve length or garment length relative to width clearly
                      differs from image 1>,
-  "lighting_ok": <false if image 2 looks dark, dim or contrasty instead of a bright, soft,
-                  even e-commerce studio photo>,
+  "lighting_ok": <false if image 2 looks dark, dim, contrasty or washed out instead of a
+                  bright, soft, even e-commerce studio photo with clean, vivid colours>,
   "flat_shape": <false if image 2 still shows the shape of a body or mannequin (bust, waist
                  curve, rounded shoulders) or the sag of a hanger instead of a flat garment>,
-  "extra_items": <true if there is a person, mannequin, hanger, tag, second garment or props>,
+  "extra_items": <true if there is a person, mannequin, hanger, tag, props, or a garment
+                  that is not one of the product pieces>,
+  "all_pieces": <false if one of the product pieces is missing>,
   "details": [{{"name": "<detail>", "ok": <true if present, same shape/text, same place>}}],
   "invented": <true if image 2 adds text, logos or prints that image 1 does not have>,
   "fix": "<short instructions to fix the problems, empty if none>"
@@ -47,7 +49,13 @@ Lighting and background differences are expected; judge only the garment itself.
 # Every problem is repaired once (the jury punishes any invented detail); the report says
 # which ones are severe. Minor repairs (a button count) cost about 2 points on the holdout
 # metric, which compares against one studio photo, not against the real garment.
-SEVERE = ("different garment", "not the front", "extra items", "invented text or logo")
+SEVERE = (
+    "different garment",
+    "not the front",
+    "extra items",
+    "missing piece",
+    "invented text or logo",
+)
 
 
 @dataclass(frozen=True)
@@ -78,7 +86,10 @@ def proportion_text(spec: GarmentSpec) -> str:
 def check(front: Path, output: Path, spec: GarmentSpec, vision: VisionClient) -> GateResult:
     details = "\n".join(f"- {d.name}: {d.description}" for d in spec.details) or "- none listed"
     prompt = _PROMPT.format(
-        category=spec.category, proportions=proportion_text(spec), details=details
+        category=spec.category,
+        pieces=", ".join(spec.pieces) if len(spec.pieces) > 1 else "one garment",
+        proportions=proportion_text(spec),
+        details=details,
     )
     try:
         answer = vision.ask(_SYSTEM, prompt, [front, output], kind="gate")
@@ -101,6 +112,8 @@ def check(front: Path, output: Path, spec: GarmentSpec, vision: VisionClient) ->
         problems.append("worn shape")
     if data.get("extra_items") is True:
         problems.append("extra items")
+    if data.get("all_pieces") is False:
+        problems.append("missing piece")
     if data.get("invented") is True:
         problems.append("invented text or logo")
     rows = data.get("details")

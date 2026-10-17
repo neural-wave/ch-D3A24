@@ -27,6 +27,7 @@ Return this JSON object:
   "roles": [{{"index": <n>, "role": "<front|back|detail|label|packaging|other>"}}],
   "garment_box": [ymin, xmin, ymax, xmax],
   "category": "<e.g. crew-neck T-shirt, wide-leg trousers, cropped cardigan>",
+  "pieces": ["<each separate piece of this product, e.g. bikini top, bikini bottom>"],
   "construction": "<neckline, closures (number of buttons, zip), sleeves, pockets, hem, length>",
   "material": "<fabric and texture, e.g. ribbed knit, washed denim, satin>",
   "pattern": "<solid, stripes, print..., with colours named>",
@@ -54,6 +55,9 @@ Rules:
 - "garment_box": the garment only (no hanger, mannequin or person) on photo front_index,
   in 0-1000 coordinates.
 - Quote any text exactly as written; say "unreadable" if you cannot read it.
+- "pieces": a product sold as a set (bikini, two-piece set, pyjamas, pair of socks) lists
+  every piece; a single garment has one piece. Clothes only worn with it (jeans under a top),
+  the mannequin and the hanger are not pieces.
 """
 
 
@@ -80,6 +84,7 @@ class GarmentSpec:
     proportion_notes: str = ""
     photo_lighting: str = ""
     photo_setup: str = ""  # flat, hanger, mannequin, worn or other
+    pieces: tuple[str, ...] = ()  # more than one for sets such as a bikini
     uncertain: tuple[str, ...] = ()
     cost_usd: float = 0.0
     used_fallback: bool = False
@@ -164,6 +169,7 @@ def _build(photos: tuple[RolePhoto, ...], data: dict[str, object], cost: float) 
         proportion_notes=str(proportions.get("notes") or ""),
         photo_lighting=str(data.get("photo_lighting") or ""),
         photo_setup=str(data.get("photo_setup") or "").lower(),
+        pieces=tuple(str(piece) for piece in _list(data.get("pieces")) if piece)[:4],
         uncertain=tuple(str(item) for item in _list(data.get("uncertain"))),
         cost_usd=cost,
     )

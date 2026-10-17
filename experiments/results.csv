@@ -34,3 +34,6 @@ at,run,model,prompt,inputs,samples,pairs,score,colour,lpips,clip,geometry,ssim,b
 2026-10-17T13:30+00:00,post_shading_half,post,shading-removal-50,run:holdout_nb21p_v2_all,1,38,61.59,0.635,0.348,0.747,0.848,0.713,61.59,0.0,0.0
 2026-10-17T13:30+00:00,post_shading_full,post,shading-removal-100,run:holdout_nb21p_v2_all,1,38,60.30,0.614,0.341,0.737,0.839,0.713,60.30,0.0,0.0
 2026-10-17T13:30+00:00,post_shadow_lift,post,shadow-lift-35,run:holdout_nb21p_v2_all,1,38,61.19,0.623,0.349,0.746,0.848,0.724,61.19,0.0,0.0
+2026-10-17T15:00+00:00,post_chroma_105,post,chroma-x1.05,run:holdout_nb21p_v2_all,1,38,61.80,0.640,0.348,0.748,0.848,0.714,61.80,0.0,0.0
+2026-10-17T15:00+00:00,post_chroma_110,post,chroma-x1.10,run:holdout_nb21p_v2_all,1,38,61.40,0.630,0.347,0.747,0.848,0.714,61.40,0.0,0.0
+2026-10-17T15:00+00:00,post_chroma_120,post,chroma-x1.20,run:holdout_nb21p_v2_all,1,38,60.06,0.600,0.345,0.744,0.849,0.714,60.06,0.0,0.0
