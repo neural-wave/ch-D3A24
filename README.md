@@ -57,6 +57,30 @@ A Vast.ai instance is already a container, so the Dev Container itself is not us
 
 4. Start the app inside `tmux` so it survives SSH disconnects. Use `share=True` in `demo.launch()` (or a Cloudflare tunnel) to get the HTTPS link phones need for the camera.
 
+## Batch runs and self-scoring
+
+The pipeline is exposed both as the Gradio demo and as a batch runner that writes the
+challenge submission layout (`submissions/<team>/<garment_id>/<view>.png`):
+
+```bash
+zir-run --manifest data/sartiq_neural_wave_2026/dev/inputs.jsonl \
+        --dataset data/sartiq_neural_wave_2026 --out submissions --team zir
+```
+
+The official self-evaluation harness is vendored under `tools/` and `scripts/` (see
+[Credits](#credits-and-provenance)) and wrapped by a `Makefile`:
+
+```bash
+make holdout    # carve a self-evaluation holdout out of the example pairs
+make run        # run zircon's pipeline over dev into submissions/zir/
+make eval       # score predictions/zir/ on the holdout with the frozen scorer
+make baseline   # reproduce the identity floor to compare against
+make validate   # check the submission layout and images before handing in
+```
+
+The dataset is expected at `data/sartiq_neural_wave_2026` (gitignored). Override it per
+run with `--dataset <root>` or `make DATASET=<root> …`.
+
 ## Optional dependency groups
 
 All groups are installed in the image. If you install outside the container:
@@ -65,6 +89,7 @@ All groups are installed in the image. If you install outside the container:
 |---|---|
 | `generative` | Optional creative mode (diffusers, accelerate) |
 | `eval` | Metrics and plots (pyiqa, pandas, matplotlib) |
+| `scorer` | The vendored frozen Sartiq scorer and its dependencies (scipy, lpips, open_clip_torch, rembg, onnxruntime, tqdm) |
 | `dev` | ruff, mypy, pytest, pre-commit |
 
 ## Development
@@ -80,3 +105,20 @@ mypy src
 ```bash
 pytest
 ```
+
+## Credits and provenance
+
+The self-evaluation harness is **vendored unmodified** from the official Sartiq Neural
+Wave 2026 participant starter repo, [`shootify-io/neural-wave-2026`](https://github.com/shootify-io/neural-wave-2026)
+at commit `ce3d736` (16 October 2026), under the Neural Wave 2026 hackathon terms of
+service:
+
+| Path | Upstream source | Notes |
+|---|---|---|
+| `tools/scorer/` | `scorer/` | The **frozen** reference-similarity scorer (`sartiq-score`). Installed from this path via `[tool.uv.sources]`. |
+| `tools/baselines/` | `baselines/` | Identity floor + hosted image-model baseline, kept as reference points. |
+| `scripts/` | `scripts/` | `make_holdout.py`, `eval_val.py`, `make_submission.py`. Unchanged; the `Makefile` supplies this repo's dataset path. |
+| `docs/neural-wave-2026/` | `docs/` | Challenge docs and the problem-statement PDF. |
+
+The scorer is frozen and is not modified here. Dataset images are provided under the
+hackathon terms and are **not** redistributed in this repository.

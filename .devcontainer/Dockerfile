@@ -32,11 +32,15 @@ WORKDIR /workspaces/zir-image-enhancer
 
 # Dependencies are installed in the image (not in postCreateCommand) so the container starts
 # ready, install errors are visible during the build, and the same image works on Vast.ai.
+# `tools/` is copied before the install because the frozen scorer is a path dependency.
 COPY pyproject.toml README.md ./
+COPY tools ./tools
 
 # The constraint file freezes the torch and torchvision already in the image, so uv can never
 # replace the CUDA build with a different wheel from PyPI. If grep finds nothing, the build
-# fails here on purpose: it means the base image changed.
+# fails here on purpose: it means the base image changed. `--all-extras` pulls the `scorer`
+# group and installs the vendored `sartiq-score` from tools/scorer via [tool.uv.sources].
 RUN uv pip freeze --system | grep -iE '^(torch|torchvision)==' > /tmp/torch-constraints.txt \
     && uv pip install --system -r pyproject.toml --all-extras -c /tmp/torch-constraints.txt \
-    && python -c "import torch, torchvision; print('torch', torch.__version__, 'torchvision', torchvision.__version__)"
+    && python -c "import torch, torchvision; print('torch', torch.__version__, 'torchvision', torchvision.__version__)" \
+    && python -c "import sartiq_score; print('sartiq-score', sartiq_score.__version__)"

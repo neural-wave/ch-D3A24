@@ -43,5 +43,18 @@ Thumbs.db
 # Secrets
 .env
 
+# Upstream starter clone kept only for its cached model weights and venv.
+# Everything we depend on is vendored under tools/, scripts/ and docs/.
 local/
 .opencode/
+
+# Vendored scorer model weights (downloaded on first run, never committed)
+tools/scorer/.models/
+
+# Self-evaluation outputs (holdout split, predictions, scores, submissions)
+holdout/
+predictions/
+submissions/
+val_out/
+val_smoke/
+val_hosted/

@@ -9,6 +9,8 @@ import gradio as gr
 import numpy as np
 from PIL import Image
 
+from zir_image_enhancer.pipeline import studio_shot
+
 _MAIN_STATUS = "Add one or more photos, then create your studio shot."
 _NO_INPUT_STATUS = "Add at least one photo first."
 _READY_STATUS = "Studio shot ready, created from {count} photo(s)."
@@ -112,15 +114,6 @@ def _collect_images(
     return images
 
 
-def _studio_shot(image: np.ndarray) -> np.ndarray:
-    """Placeholder for the enhancement pipeline.
-
-    The real stages (color, denoise, crop, detail, studio) are not connected yet,
-    so the studio shot currently equals the input photo.
-    """
-    return image
-
-
 def _format_log(images: list[np.ndarray]) -> str:
     lines = [f"**{len(images)} photo(s) received**", ""]
     for index, image in enumerate(images, start=1):
@@ -152,7 +145,7 @@ def _enhance(
         return None, _EMPTY_LOG, _NO_INPUT_STATUS, None
 
     before = images[0]
-    after = _studio_shot(before)
+    after = studio_shot(before)
     slider = (before, after)
     status = _READY_STATUS.format(count=len(images))
     return slider, _format_log(images), status, _save_png(after)

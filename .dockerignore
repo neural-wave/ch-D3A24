@@ -16,3 +16,7 @@ data/
 **/*.gguf
 .gradio/
 .env
+# Upstream clone (cached venv/weights) is not part of the build context.
+local/
+# Scorer weights are downloaded at runtime into a mounted cache, not baked in.
+tools/scorer/.models/

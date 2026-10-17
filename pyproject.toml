@@ -42,6 +42,19 @@ eval = [
     "pandas>=2.2.0",
     "matplotlib>=3.8.0",
 ]
+# The official Sartiq reference-similarity scorer and the self-evaluation harness.
+# The frozen `sartiq-score` package itself is vendored (unmodified) under
+# `tools/scorer/` and installed from there via [tool.uv.sources]; this group only
+# pulls the third-party dependencies it needs on top of the base dependencies.
+scorer = [
+    "sartiq-score",
+    "scipy>=1.11",
+    "lpips>=0.1.4",
+    "open_clip_torch>=2.24",
+    "rembg>=2.0.50",
+    "onnxruntime>=1.17",
+    "tqdm>=4.66",
+]
 dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
@@ -51,6 +64,12 @@ dev = [
 
 [project.scripts]
 zir-app = "zir_image_enhancer.app:main"
+zir-run = "zir_image_enhancer.cli:main"
+
+# The vendored, frozen scorer is installed from this path source wherever the
+# `scorer` extra is requested (e.g. `uv pip install -e ".[scorer]"`).
+[tool.uv.sources]
+sartiq-score = { path = "tools/scorer", editable = true }
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -59,6 +78,9 @@ where = ["src"]
 line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
+# Vendored, unmodified code from the Neural Wave 2026 starter repo (see README):
+# keep it byte-identical to upstream rather than reformatting it.
+extend-exclude = ["tools", "scripts"]
 
 [tool.ruff.lint]
 # ANN enforces type hints on every function, which is the team convention.
@@ -77,3 +99,5 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Never collect the vendored upstream code or generated run outputs.
+norecursedirs = ["tools", "scripts", ".venv", "local", "data", "holdout", "submissions", "predictions", "val_*"]
