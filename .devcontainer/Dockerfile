@@ -7,8 +7,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HF_HOME=/root/.cache/huggingface \
     TORCH_HOME=/root/.cache/torch
 
-# opencv-python-headless does not need the X11 libraries, and rawpy wheels already bundle LibRaw,
-# so only the essentials stay. build-essential covers packages that compile on install.
+# Only the essentials: the pipeline calls hosted models, and build-essential covers packages
+# that compile on install.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     git-lfs \
@@ -39,7 +39,8 @@ COPY tools ./tools
 # The constraint file freezes the torch and torchvision already in the image, so uv can never
 # replace the CUDA build with a different wheel from PyPI. If grep finds nothing, the build
 # fails here on purpose: it means the base image changed. `--all-extras` pulls the `scorer`
-# group and installs the vendored `sartiq-score` from tools/scorer via [tool.uv.sources].
+# group (the vendored `sartiq-score` from tools/scorer via [tool.uv.sources]), the `select`
+# group (CLIP and AlexNet for the v4 selector) and `dev`.
 RUN uv pip freeze --system | grep -iE '^(torch|torchvision)==' > /tmp/torch-constraints.txt \
     && uv pip install --system -r pyproject.toml --all-extras -c /tmp/torch-constraints.txt \
     && python -c "import torch, torchvision; print('torch', torch.__version__, 'torchvision', torchvision.__version__)" \

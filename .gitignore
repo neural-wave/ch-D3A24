@@ -58,4 +58,6 @@ submissions/
 val_out/
 val_smoke/
 val_hosted/
-data/
+
+# Local tool settings (launch configs and the like)
+.claude/

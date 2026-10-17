@@ -48,10 +48,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--images", type=Path, required=True, help="folder with <garment>/<view>.*")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--split", default="dev")
+    parser.add_argument(
+        "--manifest", type=Path, default=None, help="our own photos; overrides --split"
+    )
     args = parser.parse_args(argv)
 
     paths = ProjectPaths.from_env()
-    manifest = paths.data_root / args.split / "inputs.jsonl"
+    manifest = args.manifest or paths.data_root / args.split / "inputs.jsonl"
     rows = [json.loads(line) for line in manifest.read_text().splitlines() if line.strip()]
     errors = []
     files: list[tuple[Path, str]] = []

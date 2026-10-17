@@ -6,9 +6,12 @@ Every prompt we sent to a model, its full text, and the runs it was used in. Sco
 
 | Prompt | Model | Status | Best result |
 |---|---|---|---|
-| `baseline` (official) | nano-banana 2.1 | reference only | 60.92 (portrait canvas) |
+| `baseline` (official) | nano-banana 2.1 | **in use** as v4 versions A (seeds 0, 1) | 60.92 (portrait canvas); 68.59 on dev |
+| `baseline-keep` (official + change as little as possible) | nano-banana 2.1 | **in use** as v4 versions B | 61.03 on 19 pairs; 68.62 on dev |
+| `baseline-white` (official + white background) | nano-banana 2.1 | **in use** as v4 versions C | 59.61 on 19 pairs; 68.66 on dev |
+| `studio-ghost-v1` | nano-banana 2.1 | in the code (`--studio-style auto` for mannequin photos); not in v4 | +1.3 on mannequin photos |
 | `studio-white-v1` | nano-banana 2.1, Pro, FLUX.2, Seedream | removed | 61.23 (Pro) |
-| `studio-style-v2` | nano-banana 2.1 | **in use** (base of the harness) | **61.82** |
+| `studio-style-v2` | nano-banana 2.1 | **in use** (base of the harness; v4 versions v3, v1 seeds 1-2) | **61.82** |
 | `studio-flat-v1` | nano-banana 2.1 | removed | 61.29 on 22 flat-lay pairs |
 | Multi-photo wrapper | nano-banana 2.1 | removed | 60.71 on 43 pairs (first photo only: 61.46) |
 | Detail close-up wrapper | nano-banana 2.1 | **in use** (named detail photos) | -1.81 with unnamed close-ups |
@@ -18,7 +21,7 @@ Every prompt we sent to a model, its full text, and the runs it was used in. Sco
 | Relight | nano-banana 2.1 | removed | -1.46 on 8 pairs |
 | Triage | Gemini 2.5 Flash | removed (the spec now picks the front) | 61.67 on shuffled photos |
 | Spec | Gemini 2.5 Flash | **in use** | |
-| Gate | Gemini 2.5 Flash | **in use**, with the jury's criteria since v4 | v3 (jury mode): 61.76 |
+| Gate | Gemini 2.5 Flash | **in use** (gate version 4: the jury's criteria) in v3 and on the v4 pick | v3 (jury mode): 61.90 |
 
 ## 1. Generation prompts (one-shot)
 
@@ -297,7 +300,7 @@ A free check showed that the spec's length-to-width estimate predicts the target
 
 ### Gate (in use)
 
-Compares the real front photo (image 1) with the packshot (image 2). Versions: v1 (`da22d1e`) checked same garment, front view, colour, extra items, details and invented text; v2 (`1fb2f88`) added proportions and lighting; v3 added pieces; v4 (current) added the jury's criteria: crop, logos and text, closures, seams and texture, with crop and logos or text counted as severe. A flat-shape check, a "washed out / vivid colours" condition on lighting and a closures check were tried in v3 and removed.
+Compares the real front photo (image 1) with the packshot (image 2). Versions: v1 (`da22d1e`) checked same garment, front view, colour, extra items, details and invented text; v2 (`1fb2f88`) added proportions and lighting; v3 added pieces; v4 (current, not to be confused with the v4 pipeline) added the jury's criteria: crop, logos and text, closures, seams and texture, with crop and logos or text counted as severe. A flat-shape check, a "washed out / vivid colours" condition on lighting and a closures check were tried in v3 and removed.
 
 ```text
 System: You are a strict quality checker for e-commerce packshots. Compare the packshot with the real photo of the same garment. Answer with one JSON object and nothing else.

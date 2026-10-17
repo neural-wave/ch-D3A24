@@ -39,7 +39,7 @@ from zir_image_enhancer.reconstruction.photos import roles_from_filenames
 from zir_image_enhancer.reconstruction.spec import extract_spec
 from zir_image_enhancer.reconstruction.vision import VisionClient
 
-_ALEX_WEIGHTS = "scorer/.models/torch/hub/checkpoints/alexnet-owt-7be5be79.pth"
+_ALEX_FILE = "torch/hub/checkpoints/alexnet-owt-7be5be79.pth"
 _ALEX_BLOCKS = {1, 4, 7, 9, 11}  # the five conv blocks LPIPS reads
 
 
@@ -58,11 +58,7 @@ class EmbeddingExperts:
             "ViT-B-32", pretrained="openai"
         )
         self._clip.eval()
-        self._alex = torchvision.models.alexnet(weights=None)
-        weights = paths.starter_root / _ALEX_WEIGHTS
-        # The same file the official scorer loads for LPIPS, so nothing new is downloaded.
-        self._alex.load_state_dict(torch.load(weights, map_location="cpu", weights_only=True))
-        self._alex.eval()
+        self._alex = _load_alexnet(paths)
         self._alex_tf = transforms.Compose(
             [
                 transforms.Resize((288, 224)),
@@ -87,10 +83,15 @@ class EmbeddingExperts:
         return np.concatenate(clip_parts), np.concatenate(alex_parts)
 
     def house_style(self) -> tuple[np.ndarray, np.ndarray]:
-        """Embeddings of the training-side studio photos (never a scored or submitted garment)."""
-        rows = [
-            json.loads(line) for line in self._paths.holdout_train.read_text().splitlines() if line
-        ]
+        """Embeddings of the training studio photos (never a scored or submitted garment).
+
+        With our holdout split present, only its training side is used, so holdout scores
+        stay honest; without it (a fresh clone, the container), every training pair is.
+        """
+        source = self._paths.holdout_train
+        if not source.exists():
+            source = self._paths.data_root / "train" / "pairs.jsonl"
+        rows = [json.loads(line) for line in source.read_text().splitlines() if line]
         targets = [self._paths.data_root / row["target"] for row in rows]
         key = hashlib.sha256("|".join(str(t) for t in targets).encode()).hexdigest()[:16]
         cache = self._paths.repo_root / "local" / f"house_style_{key}.npz"
@@ -111,6 +112,22 @@ class EmbeddingExperts:
                     feat = torch.cat([x.mean(dim=(2, 3)), x.std(dim=(2, 3))], dim=1)
                     parts.append(torch.nn.functional.normalize(feat, dim=-1))
         return torch.nn.functional.normalize(torch.cat(parts, dim=1), dim=-1).numpy()
+
+
+def _load_alexnet(paths: ProjectPaths) -> torchvision.models.AlexNet:
+    """The AlexNet the official scorer loads for LPIPS, from the first cache that has it."""
+    model = torchvision.models.alexnet(weights=None)
+    for root in (
+        paths.starter_root / "scorer" / ".models",
+        paths.repo_root / "tools" / "scorer" / ".models",
+        Path(torch.hub.get_dir()).parent,
+    ):
+        weights = root / _ALEX_FILE
+        if weights.exists():
+            model.load_state_dict(torch.load(weights, map_location="cpu", weights_only=True))
+            return model.eval()
+    # Not cached anywhere yet: torchvision downloads the same file from pytorch.org once.
+    return torchvision.models.alexnet(weights="DEFAULT").eval()
 
 
 class VersionSelector:
