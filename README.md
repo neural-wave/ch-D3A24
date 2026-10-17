@@ -81,14 +81,14 @@ The gain grows with every distinct version in the pool, about +0.2 each from 2 t
 
 ### Versions
 
-v1 to v3 run in the app ("Pipeline version" selector) and in `zir-run` / `scripts/reconstruct.py` with `--mode`. v4 is the batch pipeline we submit.
+All four run in the app ("Pipeline version" selector). v1 to v3 also run in `zir-run` / `scripts/reconstruct.py` with `--mode`; v4 in batch is `scripts/run_v4.py`, the pipeline we submit.
 
 | Version | What it does | Holdout (38) | Dev leaderboard |
 |---|---|---|---|
 | v1 `oneshot` | Studio prompt and the front photo, one generation | 61.82 | 68.62 |
 | v2 `harness` | Spec details and sets in the prompt, named detail photos, gate, one repair | 61.77 (24 garments) | 68.30 |
 | v3 `jury` (app default) | v1, then the jury gate; a detail defect is fixed by editing the packshot, a global one (colour, proportions, view, crop) by drawing it again | 61.90 | 68.75 |
-| **v4** `scripts/run_v4.py` | 9 versions per garment, one pick by two embedding experts, the jury gate on the top 3 | **63.01** | **69.59** |
+| **v4** (app option, `scripts/run_v4.py`) | 9 versions per garment, one pick by two embedding experts, the jury gate on the top 3 | **63.01** | **69.59** |
 
 Cost and time: about $0.06 and 20 to 60 seconds per version and garment (v1 to v3: one version, plus a repair for about one garment in ten; v4: nine, about $0.55 per garment). The spec and each gate check add about $0.002.
 
@@ -101,19 +101,22 @@ Cost and time: about $0.06 and 20 to 60 seconds per version and garment (v1 to v
 ## Run it
 
 1. Copy `.env.example` to `.env` and set `FAL_KEY`.
-2. Start the app from the repo root:
+2. Start the app from the repo root (`--extra select` adds the local models v4 needs; `uv run zir-app` alone runs v1 to v3):
 
    ```bash
-   uv run zir-app
+   uv run --extra select zir-app
    ```
 
-3. Open `http://localhost:7860`, upload the front photo first, then the back and close-ups, and press **Create studio shot**.
+3. Open `http://localhost:7860`, upload the front photo first, then the back and close-ups, pick the version and press **Create studio shot**.
+
+Both versions take one to five photos of the same garment. v3 (the default) makes one image: about 20 seconds and $0.06. v4 makes nine and picks one: about a minute and $0.55, and the better pick on average.
 
 Tips:
 
 - Detail photos are only used when they have a role. Type one role per photo in the app (`front`, `back`, `detail chest logo`) or put it in the file name (`03_detail_chest-logo.jpg`).
 - Add `GRADIO_SHARE=1` before the command to get an https link a phone can open (needed for the camera).
 - Every run keeps its photos and attempts in `local/app_runs/<name>/`.
+- v4 in the app ranks one garment at a time with the signal scales measured on the holdout, so it picks as the batch does (63.01 on the holdout either way).
 - Spending stops at `ZIR_FAL_BUDGET_USD` in `.env`, counted in `local/fal_ledger.jsonl`.
 
 ### The submission (v4)
@@ -150,10 +153,11 @@ uv run --extra select python scripts/run_v4.py --name ours --manifest local/capt
 |---|---|
 | `src/zir_image_enhancer/app.py` | The Gradio app |
 | `src/zir_image_enhancer/cli.py` | `zir-run`, the batch runner (v1 to v3) |
-| `src/zir_image_enhancer/pipeline.py` | `StudioPipeline`, shared by the app and `zir-run` |
+| `src/zir_image_enhancer/pipeline.py` | `StudioPipeline`, shared by the app and `zir-run` (v1 to v4) |
+| `src/zir_image_enhancer/selection.py`, `embeddings.py` | v4: the nine versions, the ranking and the gate fallback, the CLIP and AlexNet experts |
 | `src/zir_image_enhancer/reconstruction/` | Spec, prompts, references, gate and the repair loop |
 | `src/zir_image_enhancer/generation/` | fal client with cache and budget guard, model and studio prompts |
-| `scripts/run_v4.py`, `select_versions.py`, `make_zip.py` | v4: the versions, the selector with the gate, the leaderboard ZIP |
+| `scripts/run_v4.py`, `select_versions.py`, `make_zip.py` | v4 in batch: the versions, one pick per garment, the leaderboard ZIP |
 | `scripts/reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py` | Holdout runs, official scoring, side-by-side sheets |
 | `scripts/eval_val.py`, `make_holdout.py`, `make_submission.py` | Official starter scripts (vendored) |
 | `docs/PROMPTS.md` | Every prompt we tried and how it scored |

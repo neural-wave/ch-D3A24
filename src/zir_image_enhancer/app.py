@@ -12,7 +12,7 @@ import gradio as gr
 import numpy as np
 from PIL import Image, ImageOps
 
-from zir_image_enhancer.pipeline import MissingKeyError, StudioPipeline
+from zir_image_enhancer.pipeline import MissingExtraError, MissingKeyError, StudioPipeline
 
 _MAIN_STATUS = "Add one or more photos, then create your studio shot."
 _NO_INPUT_STATUS = "Add at least one photo first."
@@ -21,8 +21,12 @@ _ERROR_STATUS = "Could not create the studio shot: {error}"
 _EMPTY_LOG = "_Your edit log will appear here after a run._"
 
 # Label shown in the app -> pipeline mode. Holdout scores and trade-offs are in the README.
+# v3 is the default: fast and cheap for a live demo. v4 picks better on average but makes
+# nine images per garment, so it costs about nine times more and takes about a minute.
+_V3 = "v3 - one-shot, repaired when the jury checks fail (about 20 s, $0.06)"
 _VERSIONS = {
-    "v3 - one-shot, repaired when the jury checks fail": "jury",
+    "v4 - nine versions, style experts and the jury pick one (about 1 min, $0.55)": "v4",
+    _V3: "jury",
     "v2 - harness: spec details, gate and repair": "harness",
     "v1 - one-shot studio prompt": "oneshot",
 }
@@ -159,7 +163,7 @@ def _enhance(
     name = time.strftime("app-%Y%m%d-%H%M%S")
     try:
         result = _get_pipeline().run(photos, name, roles=roles, mode=_VERSIONS.get(version))
-    except MissingKeyError as error:
+    except (MissingKeyError, MissingExtraError) as error:
         return None, _EMPTY_LOG, _ERROR_STATUS.format(error=error), None
     except Exception as error:  # noqa: BLE001
         # Shown in the app instead of a stack trace (for example an exhausted fal balance).
@@ -219,7 +223,7 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
             )
             version = gr.Radio(
                 choices=list(_VERSIONS),
-                value=next(iter(_VERSIONS)),
+                value=_V3,
                 label="Pipeline version",
             )
             with gr.Row():

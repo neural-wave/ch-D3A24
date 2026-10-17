@@ -16,37 +16,14 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 from zir_image_enhancer.dataset import load_manifest, split_manifest
 from zir_image_enhancer.paths import ProjectPaths
+from zir_image_enhancer.selection import V4_VERSIONS
 
 SCRIPTS = Path(__file__).resolve().parent
 COST_PER_IMAGE = 0.06  # nano-banana 2.1 at about 1K; the gate and spec add about $0.002 each
-
-
-@dataclass(frozen=True)
-class Version:
-    name: str
-    mode: str
-    style: str
-    seed: int
-
-
-# Distinct prompts and seeds: the selector gained about +0.2 per distinct version on the
-# holdout (2 to 9 versions), so the pool is as varied as the budget allows.
-VERSIONS = (
-    Version("v3", "jury", "auto", 0),
-    Version("flat_s1", "oneshot", "flat", 1),
-    Version("flat_s2", "oneshot", "flat", 2),
-    Version("A", "oneshot", "baseline", 0),
-    Version("A_s1", "oneshot", "baseline", 1),
-    Version("B", "oneshot", "baseline-keep", 0),
-    Version("B_s1", "oneshot", "baseline-keep", 1),
-    Version("C", "oneshot", "baseline-white", 0),
-    Version("C_s1", "oneshot", "baseline-white", 1),
-)
 
 
 def run(command: list[str]) -> None:
@@ -62,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest", type=Path, default=None, help="our own photos")
     parser.add_argument("--name", default=None, help="run prefix (default: the split)")
     parser.add_argument("--team", default="d3a24")
-    parser.add_argument("--versions", type=int, default=len(VERSIONS), help="use the first N")
+    parser.add_argument("--versions", type=int, default=len(V4_VERSIONS), help="use the first N")
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--dry-run", action="store_true", help="print the plan and the cost")
     args = parser.parse_args(argv)
@@ -71,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     manifest = args.manifest or split_manifest(args.split, paths)
     garments = len(load_manifest(manifest, paths.data_root))
     name = args.name or args.split
-    versions = VERSIONS[: args.versions]
+    versions = V4_VERSIONS[: args.versions]
     print(
         f"v4 on {garments} garments, {len(versions)} versions: at most "
         f"${garments * len(versions) * COST_PER_IMAGE:.2f} (cached results are free)"

@@ -80,6 +80,11 @@ class GateResult:
     def severe(self) -> tuple[str, ...]:
         return tuple(problem for problem in self.problems if problem in SEVERE)
 
+    @property
+    def weight(self) -> int:
+        """How two images with defects are compared: severe problems count double."""
+        return len(self.problems) + len(self.severe)
+
 
 def proportion_text(spec: GarmentSpec) -> str:
     """The garment's proportions as one sentence, shared by the prompt and the gate."""

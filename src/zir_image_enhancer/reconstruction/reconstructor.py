@@ -135,7 +135,7 @@ class Reconstructor:
                     repair = self._attempt(spec, edit_refs, workdir, 1, prompt)
                 attempts.append(repair)
                 # Strictly fewer defects: on a tie the one-shot stays, it scores better.
-                if repair.gate is not None and _weight(repair.gate) < _weight(first.gate):
+                if repair.gate is not None and repair.gate.weight < first.gate.weight:
                     final = repair
         else:
             first = self._attempt(
@@ -152,7 +152,7 @@ class Reconstructor:
                 repair = self._attempt(spec, references, workdir, 1, prompt)
                 attempts.append(repair)
                 # Keep the repair unless the gate finds more problems (severe ones count double).
-                if repair.gate is None or _weight(repair.gate) <= _weight(first.gate):
+                if repair.gate is None or repair.gate.weight <= first.gate.weight:
                     final = repair
 
         cost = spec.cost_usd + sum(
@@ -188,7 +188,3 @@ def _style_for(setting: str, spec: GarmentSpec) -> str:
     if setting != "auto":
         return setting
     return "ghost" if spec.photo_setup == "mannequin" else "flat"
-
-
-def _weight(gate: GateResult) -> int:
-    return len(gate.problems) + len(gate.severe)
