@@ -41,6 +41,7 @@ Return this JSON object:
     "notes": "<where sleeves end and where the hem falls, e.g. sleeves end at the hem>"
   }},
   "photo_lighting": "<the light in the photos, e.g. warm indoor light, dim, flash, daylight>",
+  "photo_setup": "<how photo front_index shows the garment: flat|hanger|mannequin|worn|other>",
   "uncertain": ["<things the photos do not show clearly>"]
 }}
 
@@ -78,6 +79,7 @@ class GarmentSpec:
     sleeve_to_body_length: float | None = None
     proportion_notes: str = ""
     photo_lighting: str = ""
+    photo_setup: str = ""  # flat, hanger, mannequin, worn or other
     uncertain: tuple[str, ...] = ()
     cost_usd: float = 0.0
     used_fallback: bool = False
@@ -161,6 +163,7 @@ def _build(photos: tuple[RolePhoto, ...], data: dict[str, object], cost: float) 
         sleeve_to_body_length=_ratio(proportions.get("sleeve_to_body_length")),
         proportion_notes=str(proportions.get("notes") or ""),
         photo_lighting=str(data.get("photo_lighting") or ""),
+        photo_setup=str(data.get("photo_setup") or "").lower(),
         uncertain=tuple(str(item) for item in _list(data.get("uncertain"))),
         cost_usd=cost,
     )

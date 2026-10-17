@@ -66,6 +66,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-colours", action="store_true")
     parser.add_argument("--no-crops", action="store_true")
     parser.add_argument("--no-detail-photos", action="store_true")
+    parser.add_argument(
+        "--relight", action="store_true", help="second pass that only fixes the studio light"
+    )
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--ids", nargs="*", default=None)
     parser.add_argument("--workers", type=int, default=6)
@@ -87,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
         use_detail_photos=not args.no_detail_photos,
         gate=not args.no_gate,
         prompt_mode=args.prompt_mode,
+        relight=args.relight,
     )
     budget = float(os.environ.get("ZIR_FAL_BUDGET_USD", 70.0))
     ledger = CostLedger(paths.fal_ledger)
