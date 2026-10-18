@@ -1,6 +1,6 @@
 # Zir Image Enhancer
 
-Turn a few phone photos of a garment into one clean studio packshot: front view, laid flat, on a light background, with the real colours and details kept.
+Zir (Ukrainian зір: vision, sight) turns a few phone photos of a garment into one clean studio packshot: front view, on a light background, with the real colours and details kept.
 
 Built by team `D3A24` for the [Sartiq](https://www.sartiq.ai/) challenge at the [Neural Wave 2026 Hackathon](https://neuralwave.ch).
 
@@ -82,9 +82,11 @@ Cost and time per garment: about $0.06 and 20 seconds with nano-banana 2.1, plus
 
 ## Requirements
 
-- [uv](https://docs.astral.sh/uv/) (it installs Python 3.11+ for you)
+- [uv](https://docs.astral.sh/uv/) (it installs Python 3.11+ and the project environment for you; no conda or system Python setup needed)
 - A fal.ai API key with balance
 - No GPU: both models run on fal
+
+`uv run zir-app` sets up the app's dependencies on first use. To install everything at once (the app, the official scorer and the dev tools), run `uv sync --all-extras` or `make install`.
 
 ## Run it
 
@@ -190,19 +192,23 @@ Override defaults on the command line, for example `make eval TEAM=zir JOBS=4 LI
 
 ## Development
 
+Everything runs through uv: `uv sync --all-extras` (or `make install`) creates the project's `.venv` with the dev tools and the scorer. The dev tools come from the default `dev` group, so plain `uv run` already has them.
+
 ```bash
-uv run --extra dev ruff check .
+uv run ruff check .
 ```
 
 ```bash
-uv run --extra dev mypy src
+uv run mypy src
 ```
 
 ```bash
-uv run --extra dev pytest
+uv run pytest
 ```
 
-A VS Code Dev Container (`.devcontainer/`) is included; on Vast.ai, build the same image with `docker build -f .devcontainer/Dockerfile .` and expose port 7860.
+Or `make fmt`, `make lint`, `make type`, `make test`, or `make check` for all of them.
+
+A VS Code Dev Container (`.devcontainer/`) is included; on Vast.ai, build the same image with `docker build -f .devcontainer/Dockerfile .` and expose port 7860. It is uv-native (no conda) and installs the project environment into `/opt/venv`.
 
 ## Credits
 

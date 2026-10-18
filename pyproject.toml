@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "zir-image-enhancer"
 version = "0.1.0"
-description = "A local, explainable AI pipeline that turns smartphone product photos into studio shots."
+description = "Turn a few phone photos of a garment into one clean studio shot."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -13,17 +13,17 @@ dependencies = [
     "gradio>=6.30.0",
     "numpy>=1.26.0",
     "pillow>=10.4.0",
-    "pillow-heif>=0.18.0",        # iPhone photos arrive as HEIC
-    "fal-client>=1.0.0",          # hosted generation and vision (FAL_KEY)
-    "httpx>=0.27.0",              # downloads fal results; already a fal-client dependency
-    "python-dotenv>=1.0.0",       # reads FAL_KEY and path overrides from .env
+    "pillow-heif>=0.18.0", # iPhone photos arrive as HEIC
+    "fal-client>=1.0.0", # hosted generation and vision (FAL_KEY)
+    "httpx>=0.27.0", # downloads fal results; already a fal-client dependency
+    "python-dotenv>=1.0.0", # reads FAL_KEY and the budget limit from .env
 ]
 
 [project.optional-dependencies]
-# The official Sartiq reference-similarity scorer and the self-evaluation harness.
-# The frozen `sartiq-score` package itself is vendored (unmodified) under
-# `tools/scorer/` and installed from there via [tool.uv.sources]; this group only
-# pulls the third-party dependencies it needs on top of the base dependencies.
+# The official Sartiq reference-similarity scorer. The frozen `sartiq-score` package
+# itself is vendored (unmodified) under `tools/scorer/` and installed from there via
+# [tool.uv.sources]; this extra only pulls the third-party dependencies it needs on top
+# of the base dependencies. Install it with `uv sync --all-extras`.
 scorer = [
     "sartiq-score",
     "scipy>=1.11",
@@ -33,6 +33,9 @@ scorer = [
     "onnxruntime>=1.17",
     "tqdm>=4.66",
 ]
+
+[dependency-groups]
+# Installed by `uv sync` (and thus available to `uv run`) by default.
 dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",

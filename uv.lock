@@ -3710,12 +3710,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-dev = [
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "ruff" },
-]
 scorer = [
     { name = "lpips" },
     { name = "onnxruntime" },
@@ -3727,25 +3721,37 @@ scorer = [
     { name = "tqdm" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "fal-client", specifier = ">=1.0.0" },
     { name = "gradio", specifier = ">=6.30.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "lpips", marker = "extra == 'scorer'", specifier = ">=0.1.4" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.13.0" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "onnxruntime", marker = "extra == 'scorer'", specifier = ">=1.17" },
     { name = "open-clip-torch", marker = "extra == 'scorer'", specifier = ">=2.24" },
     { name = "pillow", specifier = ">=10.4.0" },
     { name = "pillow-heif", specifier = ">=0.18.0" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.0.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "rembg", marker = "extra == 'scorer'", specifier = ">=2.0.50" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
     { name = "sartiq-score", marker = "extra == 'scorer'", editable = "tools/scorer" },
     { name = "scipy", marker = "extra == 'scorer'", specifier = ">=1.11" },
     { name = "tqdm", marker = "extra == 'scorer'", specifier = ">=4.66" },
 ]
-provides-extras = ["scorer", "dev"]
+provides-extras = ["scorer"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.13.0" },
+    { name = "pre-commit", specifier = ">=4.0.0" },
+    { name = "pytest", specifier = ">=8.3.0" },
+    { name = "ruff", specifier = ">=0.8.0" },
+]
