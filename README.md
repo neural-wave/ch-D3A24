@@ -1,6 +1,6 @@
 # Zir Image Enhancer
 
-Turn a few phone photos of a garment into one clean studio packshot: front view, laid flat, on a light background, with the real colours and details kept.
+Zir (ukr. зір - vision, sight): Turn a few phone photos of a garment into one clean studio shot.
 
 Built by team `D3A24` for the [Sartiq](https://www.sartiq.ai/) challenge at the [Neural Wave 2026 Hackathon](https://neuralwave.ch).
 
@@ -23,17 +23,18 @@ One garment through v3, the app's default: it keeps the prompt that scores best 
 
 ```mermaid
 flowchart TD
-    A["Phone photos<br/>front, back, close-ups"] --> B["Prepare<br/>upright JPEG, roles from file names"]
-    B --> C{{"Spec<br/>Gemini 2.5 Flash"}}
-    C -->|front photo| F[["One-shot<br/>nano-banana 2.1 + studio prompt"]]
-    F --> G{{"Jury gate<br/>Gemini 2.5 Flash"}}
-    C -.->|details to check| G
-    G -->|no defects| H["Studio packshot"]
-    G -->|detail defects| E[["Edit the packshot<br/>fix only the flagged details,<br/>real photos as reference"]]
-    G -->|global defects| R[["Draw it again<br/>front + detail photos,<br/>spec details + the gate's fix"]]
-    E --> G2
-    R --> G2{{"Jury gate again"}}
-    G2 --> K["Keep the one with fewer defects<br/>a tie keeps the one-shot"]
+    A["Phone photos<br/>front, back, close-ups"] --> B["Prepare<br/>upright JPEG"]
+    B --> S{{"Input assessment<br/>score + drop non-evidence"}}
+    S --> C{{"Spec<br/>Gemini 2.5 Flash"}}
+    C --> D["Pick references<br/>front + pipeline-picked close-ups"]
+    C --> E["Write the prompt<br/>studio style + proportions,<br/>studio light, details, sets"]
+    D --> F[["Generate<br/>nano-banana 2.1 edit"]]
+    E --> F
+    F --> G{{"Quality gate<br/>Gemini 2.5 Flash"}}
+    C -.->|what must be kept| G
+    G -->|no problems| H["Studio packshot"]
+    G -->|problems found| R["Repair once<br/>same prompt + the gate's fix"]
+    R --> K["Keep the attempt<br/>with fewer problems"]
     K --> H
 ```
 
@@ -46,11 +47,13 @@ sequenceDiagram
     participant H as Harness
     participant V as Gemini 2.5 Flash
     participant G as nano-banana 2.1
-    U->>App: photos, optional roles, version
+    U->>App: photos
     App->>H: StudioPipeline.run
-    H->>V: all photos
-    V-->>H: spec: front, type, details, proportions, pieces
-    H->>G: front photo, studio prompt
+    H->>V: all photos (assess)
+    V-->>H: scores; non-evidence dropped
+    H->>V: kept photos
+    V-->>H: spec: front, type, details, proportions, photo setup, pieces
+    H->>G: front + pipeline-picked close-ups, prompt
     G-->>H: packshot
     H->>V: real photo + packshot
     V-->>H: defects and a fix
@@ -94,9 +97,12 @@ Cost and time: about $0.06 and 20 to 60 seconds per version and garment (v1 to v
 
 ## Requirements
 
-- [uv](https://docs.astral.sh/uv/) (it installs Python 3.11+ for you)
+- [uv](https://docs.astral.sh/uv/) (it installs Python 3.11+ and the project environment for you; no conda or system Python setup needed)
 - A fal.ai API key with balance
 - No GPU: both models run on fal; the v4 selector runs on CPU
+
+`uv run zir-app` sets up the app's dependencies on first use. To install everything at once —
+the app, the official scorer and the dev tools — run `uv sync --all-extras` (or `make install`).
 
 ## Run it
 
@@ -113,7 +119,7 @@ Both versions take one to five photos of the same garment. v3 (the default) make
 
 Tips:
 
-- Detail photos are only used when they have a role. Type one role per photo in the app (`front`, `back`, `detail chest logo`) or put it in the file name (`03_detail_chest-logo.jpg`).
+- You don't label photos. The pipeline assesses every photo, drops ones that carry no evidence (price tags, packaging, artifacts) and picks the front, the back and the detail close-ups itself.
 - Add `GRADIO_SHARE=1` before the command to get an https link a phone can open (needed for the camera).
 - Every run keeps its photos and attempts in `local/app_runs/<name>/`.
 - v4 in the app ranks one garment at a time with the signal scales measured on the holdout, so it picks as the batch does (63.01 on the holdout either way).
@@ -216,19 +222,25 @@ Override defaults on the command line, for example `make eval TEAM=zir JOBS=4 LI
 
 ## Development
 
+Everything runs through uv: `uv sync --all-extras` (or `make install`) creates the
+project's `.venv` with the dev tools and the scorer. The dev tools come from the default
+`dev` group, so plain `uv run` already has them.
+
 ```bash
-uv run --extra dev ruff check .
+uv run ruff check .
 ```
 
 ```bash
-uv run --extra dev mypy src scripts
+uv run mypy src scripts
 ```
 
 ```bash
-uv run --extra dev pytest
+uv run pytest
 ```
 
-A VS Code Dev Container (`.devcontainer/`) is included; on Vast.ai, build the same image with `docker build -f .devcontainer/Dockerfile .` and expose port 7860.
+Or `make fmt`, `make lint`, `make type`, `make test`, or `make check` for all of them.
+
+A VS Code Dev Container (`.devcontainer/`) is included; on Vast.ai, build the same image with `docker build -f .devcontainer/Dockerfile .` and expose port 7860. It is uv-native (no conda) and installs the project environment into `/opt/venv`.
 
 ## Credits
 

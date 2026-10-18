@@ -23,7 +23,7 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "uv pip install --system --no-deps -e .",
+    "postCreateCommand": "uv sync --all-extras &",
     "customizations": {
         "vscode": {
             "extensions": [
@@ -33,7 +33,7 @@
                 "sst-dev.opencode"
             ],
             "settings": {
-                "python.defaultInterpreterPath": "/opt/conda/bin/python",
+                "python.defaultInterpreterPath": "/opt/venv/bin/python",
                 "[python]": {
                     "editor.defaultFormatter": "charliermarsh.ruff",
                     "editor.formatOnSave": true,
