@@ -1,12 +1,28 @@
 # The build context is the whole repo, so without this file Docker would upload
-# model weights, caches and outputs every time the image is built.
+# model weights, caches, generated outputs and datasets every time the image is built.
 .git/
-.cache/
+.github/
 .venv/
-weights/
+.cache/
+build/
+dist/
+*.egg-info/
+
+# Datasets and generated outputs (never baked into the image)
+data/
+holdout/
+predictions/
+submissions/
+val_out/
+val_smoke/
+val_hosted/
+experiments/
+local/
 outputs/
 runs/
-data/
+*.log
+
+# Model weights and caches (downloaded at runtime into a mounted cache)
 **/__pycache__/
 **/*.pth
 **/*.pt
@@ -16,7 +32,6 @@ data/
 **/*.gguf
 .gradio/
 .env
-# Upstream clone (cached venv/weights) is not part of the build context.
-local/
-# Scorer weights are downloaded at runtime into a mounted cache, not baked in.
+# The vendored scorer's own model cache is downloaded at runtime, not baked in.
 tools/scorer/.models/
+# The vendored scorer is a path dependency, so tools/ itself must stay in the context.

@@ -1,6 +1,6 @@
 # Zir Image Enhancer
 
-Turn a few phone photos of a garment into one clean studio packshot: front view, laid flat, on a light background, with the real colours and details kept.
+Zir (ukr. зір - vision, sight): Turn a few phone photos of a garment into one clean studio shot.
 
 Built by team `D3A24` for the [Sartiq](https://www.sartiq.ai/) challenge at the [Neural Wave 2026 Hackathon](https://neuralwave.ch).
 
@@ -21,9 +21,10 @@ Our code around them (the harness) decides which photos are sent, writes the ins
 
 ```mermaid
 flowchart TD
-    A["Phone photos<br/>front, back, close-ups"] --> B["Prepare<br/>upright JPEG, roles from file names"]
-    B --> C{{"Spec<br/>Gemini 2.5 Flash"}}
-    C --> D["Pick references<br/>front + named detail photos"]
+    A["Phone photos<br/>front, back, close-ups"] --> B["Prepare<br/>upright JPEG"]
+    B --> S{{"Input assessment<br/>score + drop non-evidence"}}
+    S --> C{{"Spec<br/>Gemini 2.5 Flash"}}
+    C --> D["Pick references<br/>front + pipeline-picked close-ups"]
     C --> E["Write the prompt<br/>studio style + proportions,<br/>studio light, details, sets"]
     D --> F[["Generate<br/>nano-banana 2.1 edit"]]
     E --> F
@@ -44,11 +45,13 @@ sequenceDiagram
     participant H as Harness
     participant V as Gemini 2.5 Flash
     participant G as nano-banana 2.1
-    U->>App: photos and optional roles
+    U->>App: photos
     App->>H: StudioPipeline.run
-    H->>V: all photos
+    H->>V: all photos (assess)
+    V-->>H: scores; non-evidence dropped
+    H->>V: kept photos
     V-->>H: spec: front, type, details, proportions, photo setup, pieces
-    H->>G: front + detail photos, prompt
+    H->>G: front + pipeline-picked close-ups, prompt
     G-->>H: packshot
     H->>V: real photo + packshot
     V-->>H: problems and a fix
@@ -67,9 +70,12 @@ One garment takes 20 to 60 seconds and about $0.06 to $0.13.
 
 ## Requirements
 
-- [uv](https://docs.astral.sh/uv/) (it installs Python 3.11+ for you)
+- [uv](https://docs.astral.sh/uv/) (it installs Python 3.11+ and the project environment for you; no conda or system Python setup needed)
 - A fal.ai API key with balance
 - No GPU: both models run on fal
+
+`uv run zir-app` sets up the app's dependencies on first use. To install everything at once —
+the app, the official scorer and the dev tools — run `uv sync --all-extras` (or `make install`).
 
 ## Run it
 
@@ -80,11 +86,11 @@ One garment takes 20 to 60 seconds and about $0.06 to $0.13.
    uv run zir-app
    ```
 
-3. Open `http://localhost:7860`, upload the front photo first, then the back and close-ups, and press **Create studio shot**.
+3. Open `http://localhost:7860`, upload the photos you have (the front, the back, close-ups), and press **Create studio shot**. The pipeline works out which photo is which.
 
 Tips:
 
-- Detail photos are only used when they have a role. Type one role per photo in the app (`front`, `back`, `detail chest logo`) or put it in the file name (`03_detail_chest-logo.jpg`).
+- You don't label photos. The pipeline assesses every photo, drops ones that carry no evidence (price tags, packaging, artifacts) and picks the front, the back and the detail close-ups itself.
 - Add `GRADIO_SHARE=1` before the command to get an https link a phone can open (needed for the camera).
 - Every run keeps its photos and attempts in `local/app_runs/<name>/`.
 - Spending stops at `ZIR_FAL_BUDGET_USD` in `.env`, counted in `local/fal_ledger.jsonl`.
@@ -149,23 +155,29 @@ make eval && make eval TEAM=identity    # score both with the frozen scorer
 | `make baseline-nanobanana` | The official hosted baseline over dev (add `-dry` first; costs about $2) |
 | `make predict-nanobanana` | The hosted baseline on the holdout, to compare like for like |
 
-Override defaults on the command line, for example `make eval TEAM=zir JOBS=4 LIMIT=8`. Our own experiment scripts (`reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py`) use the starter repo clone in `local/neural-wave-2026` instead.
+Override defaults on the command line, for example `make eval TEAM=zir LIMIT=8`. Keep `JOBS=1` unless you have plenty of RAM: each scorer worker loads torch and the scorer models (roughly 1.5 GB), so a memory-tight machine will otherwise crash workers mid-run and score those pairs 0. Our own experiment scripts (`reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py`) are wrapped by `make reconstruct`, `make score`, `make sheet` and `make gallery`, and everything runs through the same uv environment as the app.
 
 ## Development
 
+Everything runs through uv: `uv sync --all-extras` (or `make install`) creates the
+project's `.venv` with the dev tools and the scorer. The dev tools come from the default
+`dev` group, so plain `uv run` already has them.
+
 ```bash
-uv run --extra dev ruff check .
+uv run ruff check .
 ```
 
 ```bash
-uv run --extra dev mypy src scripts
+uv run mypy src scripts
 ```
 
 ```bash
-uv run --extra dev pytest
+uv run pytest
 ```
 
-A VS Code Dev Container (`.devcontainer/`) is included; on Vast.ai, build the same image with `docker build -f .devcontainer/Dockerfile .` and expose port 7860.
+Or `make fmt`, `make lint`, `make type`, `make test`, or `make check` for all of them.
+
+A VS Code Dev Container (`.devcontainer/`) is included; on Vast.ai, build the same image with `docker build -f .devcontainer/Dockerfile .` and expose port 7860. It is uv-native (no conda) and installs the project environment into `/opt/venv`.
 
 ## Credits
 

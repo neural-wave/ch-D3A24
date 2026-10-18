@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "zir-image-enhancer"
 version = "0.1.0"
-description = "A local, explainable AI pipeline that turns smartphone product photos into studio shots."
+description = "Turn a few phone photos of a garment into one clean studio shot."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -20,10 +20,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# The official Sartiq reference-similarity scorer and the self-evaluation harness.
-# The frozen `sartiq-score` package itself is vendored (unmodified) under
-# `tools/scorer/` and installed from there via [tool.uv.sources]; this group only
-# pulls the third-party dependencies it needs on top of the base dependencies.
+# The official Sartiq reference-similarity scorer. The frozen `sartiq-score` package
+# itself is vendored (unmodified) under `tools/scorer/` and installed from there via
+# [tool.uv.sources]; this extra only pulls the third-party dependencies it needs on top
+# of the base dependencies. Install it with `uv sync --all-extras`.
 scorer = [
     "sartiq-score",
     "scipy>=1.11",
@@ -33,6 +33,9 @@ scorer = [
     "onnxruntime>=1.17",
     "tqdm>=4.66",
 ]
+
+[dependency-groups]
+# Installed by `uv sync` (and thus available to `uv run`) by default.
 dev = [
     "ruff>=0.8.0",
     "mypy>=1.13.0",
