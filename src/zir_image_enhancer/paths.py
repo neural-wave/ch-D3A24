@@ -48,6 +48,16 @@ class ProjectPaths:
         return self.starter_root / "holdout" / "train.jsonl"
 
     @property
+    def lora_root(self) -> Path:
+        """Datasets, training runs and weights of the fine-tuned packshot LoRA."""
+        return self.repo_root / "local" / "lora"
+
+    @property
+    def lora_registry(self) -> Path:
+        """The active adapter (written by scripts/lora/train_fal.py or register_lora.py)."""
+        return self.lora_root / "registry.json"
+
+    @property
     def fal_cache(self) -> Path:
         return self.repo_root / "local" / "fal_cache"
 

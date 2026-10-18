@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     cache = paths.repo_root / "local" / "reconstruction_cache"
     vision = VisionClient(ledger, budget, cache)
     generator = FalGenerator(cache_dir=paths.fal_cache, ledger=ledger, budget_usd=budget)
-    reconstructor = Reconstructor(settings, generator, vision)
+    reconstructor = Reconstructor(settings, generator, vision, paths=paths)
 
     run_dir = paths.runs_root / args.run
     run_dir.mkdir(parents=True, exist_ok=True)

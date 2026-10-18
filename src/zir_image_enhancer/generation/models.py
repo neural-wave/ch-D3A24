@@ -15,6 +15,9 @@ class ModelSpec:
     # check the model page before trusting them for planning.
     est_cost_usd: float
     supports_seed: bool
+    # True only for the fine-tuned packshot LoRA: generation/lora.py attaches the registered
+    # adapter as the ``loras`` argument, and refuses to run when none is registered.
+    requires_lora: bool = False
     extra_arguments: Mapping[str, object] = field(default_factory=dict)
 
     def build_arguments(
@@ -46,7 +49,25 @@ MODELS: dict[str, ModelSpec] = {
             14,
             0.06,
             True,
-            {"aspect_ratio": "2:3"},
+            extra_arguments={"aspect_ratio": "2:3"},
+        ),
+        # The fine-tuned packshot LoRA trained from the example pairs (docs/LORA.md), used
+        # exactly like any other model: official spec/prompt/gate stay untouched. The
+        # endpoint is the klein edit model with LoRA support; the adapter itself is not in
+        # this spec (generation/lora.py adds it, and the cache key covers it), so the same
+        # spec can point at any registered adapter. 4 references max, like the trainer.
+        # The canvas is the exact 2:3 one the pairs are trained on: 832x1248 is the largest
+        # 2:3 size divisible by 16 whose area stays under klein's 1024^2 cap. Billing is
+        # $0.02 per megapixel of input and output with each input resized to 1 MP, so the
+        # worst case (4 references + ~1 MP output) is about $0.10.
+        ModelSpec(
+            "sartiq-lora-klein",
+            "fal-ai/flux-2/klein/9b/base/edit/lora",
+            4,
+            0.10,
+            True,
+            requires_lora=True,
+            extra_arguments={"image_size": {"width": 832, "height": 1248}},
         ),
     )
 }

@@ -23,6 +23,7 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from zir_image_enhancer.generation.lora import LoraNotAvailableError
 from zir_image_enhancer.pipeline import (
     DEFAULT_VIEW,
     MissingKeyError,
@@ -30,6 +31,7 @@ from zir_image_enhancer.pipeline import (
     StudioResult,
     StudioRunner,
 )
+from zir_image_enhancer.reconstruction.reconstructor import ReconstructionSettings
 
 _SPLIT_DIRS = {"train", "dev", "test"}
 
@@ -93,6 +95,11 @@ def main(argv: list[str] | None = None, pipeline: StudioRunner | None = None) ->
     parser.add_argument("--out", required=True, help="submission root (holds <team>/ folders)")
     parser.add_argument("--team", required=True, help="team folder name, e.g. zir")
     parser.add_argument("--view", default=DEFAULT_VIEW, help=f"view name (default: {DEFAULT_VIEW})")
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="model key, e.g. sartiq-lora-klein (default: ZIR_MODEL_KEY, else the harness default)",
+    )
     parser.add_argument("--limit", type=int, default=None, help="only the first N rows")
     parser.add_argument("--workers", type=int, default=4, help="garments processed in parallel")
     parser.add_argument(
@@ -129,9 +136,10 @@ def main(argv: list[str] | None = None, pipeline: StudioRunner | None = None) ->
         return 0
 
     if pipeline is None:
+        settings = ReconstructionSettings(model_key=args.model) if args.model else None
         try:
-            pipeline = StudioPipeline()
-        except MissingKeyError as error:
+            pipeline = StudioPipeline(settings=settings)
+        except (MissingKeyError, LoraNotAvailableError) as error:
             raise SystemExit(f"error: {error}") from error
     runner = pipeline
 

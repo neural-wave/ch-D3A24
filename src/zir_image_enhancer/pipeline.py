@@ -20,9 +20,12 @@ from PIL import Image, ImageOps
 
 from zir_image_enhancer.dataset import GarmentItem
 from zir_image_enhancer.generation.fal_backend import CostLedger, FalGenerator
+from zir_image_enhancer.generation.lora import LoraNotAvailableError, resolved_model
+from zir_image_enhancer.generation.models import get_model
 from zir_image_enhancer.paths import ProjectPaths
 from zir_image_enhancer.reconstruction.photos import Role, role_from_filename
 from zir_image_enhancer.reconstruction.reconstructor import (
+    DEFAULT_MODEL_KEY,
     ReconstructionResult,
     ReconstructionSettings,
     Reconstructor,
@@ -66,7 +69,18 @@ class StudioPipeline:
         self._paths = paths or ProjectPaths.from_env()
         if not os.environ.get("FAL_KEY"):
             raise MissingKeyError("FAL_KEY is not set. Put it in .env at the repo root.")
-        self._settings = settings or ReconstructionSettings()
+        # ZIR_MODEL_KEY (or --model) switches the batch and the app to the fine-tuned LoRA
+        # model; everything else — spec, references, prompt, gate, repair — stays as is.
+        self._settings = settings or ReconstructionSettings(
+            model_key=os.environ.get("ZIR_MODEL_KEY") or DEFAULT_MODEL_KEY
+        )
+        try:
+            # Fail fast, before any photo is processed: selecting the LoRA model without a
+            # registered adapter must not half-run and spend credits on nothing. The
+            # Reconstructor resolves the same spec (and adapter) again per run.
+            resolved_model(get_model(self._settings.model_key), self._paths)
+        except LoraNotAvailableError as error:
+            raise LoraNotAvailableError(f"{error} See docs/LORA.md.") from error
         budget = float(os.environ.get("ZIR_FAL_BUDGET_USD", 70.0))
         ledger = CostLedger(self._paths.fal_ledger)
         cache = self._paths.repo_root / "local" / "reconstruction_cache"
@@ -82,7 +96,7 @@ class StudioPipeline:
             raise ValueError("no photos given")
         workdir = self._work_root / name
         inputs = prepare_photos(photos, workdir / "inputs", roles)
-        reconstructor = Reconstructor(self._settings, self._generator, self._vision)
+        reconstructor = Reconstructor(self._settings, self._generator, self._vision, self._paths)
         started = time.perf_counter()
         result = reconstructor.run(GarmentItem(name, inputs, None), workdir / "attempts")
         return StudioResult(

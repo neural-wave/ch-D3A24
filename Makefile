@@ -18,6 +18,7 @@ FRAC        ?= 0.1
 SEED        ?= 0
 JOBS        ?= 1
 LIMIT       ?=
+MODEL       ?=
 NB_TEAM     ?= hosted-edit
 NB_PROVIDER ?= fal
 NB_LIMIT    ?=
@@ -43,10 +44,11 @@ holdout:  ## Carve a self-evaluation holdout out of the example pairs
 		--frac $(FRAC) --seed $(SEED) --out holdout \
 		--dataset $(DATASET) --group-by-target
 
-predict:  ## Run the pipeline over the holdout into predictions/<TEAM>/
+predict:  ## Run the pipeline over the holdout into predictions/<TEAM>/ (MODEL=... to pick one)
 	$(PYTHON) -m zir_image_enhancer.cli \
 		--manifest holdout/val.jsonl \
-		--dataset $(DATASET) --out predictions --team $(TEAM)
+		--dataset $(DATASET) --out predictions --team $(TEAM) \
+		$(if $(MODEL),--model $(MODEL),)
 
 predict-identity:  ## Identity predictions on the holdout (the floor to beat)
 	$(PYTHON) tools/baselines/baseline_identity.py \
@@ -70,10 +72,11 @@ baseline:  ## Identity baseline over dev into the submission layout
 		--manifest $(DATASET)/dev/inputs.jsonl \
 		--out submissions --team identity --dataset $(DATASET)
 
-run:  ## Run the pipeline over dev into submissions/<TEAM>/
+run:  ## Run the pipeline over dev into submissions/<TEAM>/ (MODEL=... to pick one)
 	$(PYTHON) -m zir_image_enhancer.cli \
 		--manifest $(DATASET)/dev/inputs.jsonl \
-		--dataset $(DATASET) --out submissions --team $(TEAM)
+		--dataset $(DATASET) --out submissions --team $(TEAM) \
+		$(if $(MODEL),--model $(MODEL),)
 
 validate:  ## Check submissions/<TEAM>/ layout and images before handing in
 	$(PYTHON) scripts/make_submission.py \

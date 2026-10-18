@@ -12,7 +12,9 @@ from pathlib import Path
 
 from zir_image_enhancer.dataset import GarmentItem
 from zir_image_enhancer.generation.fal_backend import GenerationRequest, GenerationResult, Generator
+from zir_image_enhancer.generation.lora import resolved_model
 from zir_image_enhancer.generation.models import get_model
+from zir_image_enhancer.paths import ProjectPaths
 from zir_image_enhancer.reconstruction.gate import GateResult, check
 from zir_image_enhancer.reconstruction.photos import roles_from_filenames
 from zir_image_enhancer.reconstruction.prompt import build_harness_prompt
@@ -20,10 +22,13 @@ from zir_image_enhancer.reconstruction.references import Reference, named_detail
 from zir_image_enhancer.reconstruction.spec import GarmentSpec, extract_spec
 from zir_image_enhancer.reconstruction.vision import VisionClient
 
+#: The model the harness scores best with; also what StudioPipeline uses by default.
+DEFAULT_MODEL_KEY = "nano-banana-2.1-portrait"
+
 
 @dataclass(frozen=True)
 class ReconstructionSettings:
-    model_key: str = "nano-banana-2.1-portrait"
+    model_key: str = DEFAULT_MODEL_KEY
     use_detail_photos: bool = True
     gate: bool = True
     max_references: int = 4
@@ -54,11 +59,13 @@ class Reconstructor:
         settings: ReconstructionSettings,
         generator: Generator,
         vision: VisionClient,
+        paths: ProjectPaths | None = None,
     ) -> None:
         self._settings = settings
         self._generator = generator
         self._vision = vision
-        self._model = get_model(settings.model_key)
+        # The LoRA model gets its adapter attached here; every other model passes through.
+        self._model = resolved_model(get_model(settings.model_key), paths)
 
     def run(self, item: GarmentItem, workdir: Path) -> ReconstructionResult:
         started = time.perf_counter()
