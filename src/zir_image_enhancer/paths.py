@@ -1,6 +1,6 @@
-"""Where things live: the dataset, the official starter repo and our local outputs.
+"""Where things live: the dataset, the holdout and our local outputs.
 
-Defaults match the team layout (dataset in ``data/``, starter repo in ``local/``).
+Defaults match the repo layout (dataset in ``data/``, holdout in ``holdout/``).
 Any of them can be overridden from ``.env`` or the environment.
 """
 
@@ -25,7 +25,6 @@ def _env_path(name: str, default: str) -> Path:
 class ProjectPaths:
     repo_root: Path
     data_root: Path
-    starter_root: Path
     runs_root: Path
 
     @classmethod
@@ -35,17 +34,16 @@ class ProjectPaths:
         return cls(
             repo_root=_REPO_ROOT,
             data_root=_env_path("ZIR_DATA_ROOT", "data/sartiq_neural_wave_2026"),
-            starter_root=_env_path("ZIR_STARTER_ROOT", "local/neural-wave-2026"),
             runs_root=_env_path("ZIR_RUNS_ROOT", "local/runs"),
         )
 
     @property
     def holdout_val(self) -> Path:
-        return self.starter_root / "holdout" / "val.jsonl"
+        return self.repo_root / "holdout" / "val.jsonl"
 
     @property
     def holdout_train(self) -> Path:
-        return self.starter_root / "holdout" / "train.jsonl"
+        return self.repo_root / "holdout" / "train.jsonl"
 
     @property
     def fal_cache(self) -> Path:
@@ -58,14 +56,3 @@ class ProjectPaths:
     @property
     def experiments_csv(self) -> Path:
         return self.repo_root / "experiments" / "results.csv"
-
-    def scorer_python(self) -> Path:
-        """Interpreter of the starter repo's venv, where the official scorer is installed."""
-        # Windows venvs keep the interpreter in Scripts/, everything else in bin/.
-        for relative in (".venv/Scripts/python.exe", ".venv/bin/python"):
-            candidate = self.starter_root / relative
-            if candidate.exists():
-                return candidate
-        raise FileNotFoundError(
-            f"No scorer venv in {self.starter_root}. Follow the starter README to create it."
-        )

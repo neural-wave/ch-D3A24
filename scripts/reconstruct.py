@@ -14,12 +14,16 @@ import json
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from zir_image_enhancer.dataset import GarmentItem, load_manifest, split_manifest
 from zir_image_enhancer.generation.fal_backend import CostLedger, FalGenerator
 from zir_image_enhancer.paths import ProjectPaths
+from zir_image_enhancer.reconstruction.preprocess import (
+    WHITE_BALANCE_METHODS,
+    PreprocessSettings,
+)
 from zir_image_enhancer.reconstruction.reconstructor import (
     ReconstructionResult,
     ReconstructionSettings,
@@ -32,6 +36,7 @@ def report(item: GarmentItem, result: ReconstructionResult) -> dict[str, object]
     return {
         "garment": item.item_id,
         "spec": result.spec.to_json(),
+        "preprocess": dict(result.preprocess_stats),
         "attempts": [
             {
                 "references": list(a.references),
@@ -56,6 +61,31 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", default="nano-banana-2.1-portrait")
     parser.add_argument("--no-gate", action="store_true")
     parser.add_argument("--no-detail-photos", action="store_true")
+    parser.add_argument(
+        "--no-preprocess", action="store_true", help="send the original photos, unprocessed"
+    )
+    parser.add_argument(
+        "--no-detail-crops", action="store_true", help="do not crop spec details from the front"
+    )
+    parser.add_argument(
+        "--crop-to-garment", action="store_true", help="frame the garment tightly (tested worse)"
+    )
+    parser.add_argument(
+        "--wb-method",
+        choices=WHITE_BALANCE_METHODS,
+        default=None,
+        help="illuminant estimator for the white balance (default: gray_world)",
+    )
+    parser.add_argument(
+        "--flatten",
+        type=float,
+        default=None,
+        metavar="STRENGTH",
+        help="illumination flattening in [0, 1]; evens out cast shadows and vignetting",
+    )
+    parser.add_argument(
+        "--grain", type=float, default=None, help="controlled grain sigma in 0-255 levels"
+    )
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--ids", nargs="*", default=None)
     parser.add_argument("--workers", type=int, default=6)
@@ -70,10 +100,25 @@ def main(argv: list[str] | None = None) -> int:
         items = [item for item in items if item.item_id in set(args.ids)]
     items = items[: args.limit] if args.limit is not None else items
 
+    preprocess = PreprocessSettings()
+    if args.no_preprocess:
+        preprocess = replace(preprocess, enabled=False)
+    if args.no_detail_crops:
+        preprocess = replace(preprocess, detail_crops=False)
+    if args.crop_to_garment:
+        preprocess = replace(preprocess, crop_to_garment=True)
+    if args.wb_method is not None:
+        preprocess = replace(preprocess, white_balance_method=args.wb_method)
+    if args.flatten is not None:
+        preprocess = replace(preprocess, flatten_illumination=args.flatten)
+    if args.grain is not None:
+        preprocess = replace(preprocess, grain_sigma=args.grain)
+
     settings = ReconstructionSettings(
         model_key=args.model,
         use_detail_photos=not args.no_detail_photos,
         gate=not args.no_gate,
+        preprocess=preprocess,
     )
     budget = float(os.environ.get("ZIR_FAL_BUDGET_USD", 70.0))
     ledger = CostLedger(paths.fal_ledger)

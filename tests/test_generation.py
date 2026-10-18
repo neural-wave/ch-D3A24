@@ -111,12 +111,3 @@ def test_gate_repairs_only_severe_problems() -> None:
     minor = GateResult(False, ("detail wrong: buttons", "colour changed"), "", 0.0)
     severe = GateResult(False, ("extra items", "colour changed"), "", 0.0)
     assert minor.severe == () and severe.severe == ("extra items",)
-
-
-def test_photo_roles_from_file_names() -> None:
-    from zir_image_enhancer.reconstruction.photos import Role, role_from_filename
-
-    detail = role_from_filename(Path("03_detail_chest-logo.jpg"))
-    assert detail.role is Role.DETAIL and detail.name == "chest logo"
-    assert role_from_filename(Path("01_front.jpg")).role is Role.FRONT
-    assert role_from_filename(Path("input_1.jpg")).role is Role.UNKNOWN

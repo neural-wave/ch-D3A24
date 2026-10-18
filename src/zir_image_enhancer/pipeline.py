@@ -1,9 +1,10 @@
 """Studio pipeline: phone photos of one product in, one studio packshot out.
 
 ``StudioPipeline`` is the single seam shared by the Gradio app (``app.py``) and the batch
-runner (``cli.py`` / ``zir-run``). It runs the reconstruction harness: garment spec (vision),
-studio prompt with geometry, flattening and details, named detail photos, and a quality
-gate with one repair.
+runner (``cli.py`` / ``zir-run``). It runs the reconstruction harness: input assessment, the
+garment spec (vision), a studio prompt with geometry and details, pipeline-picked detail
+close-ups, and a quality gate with one repair. The pipeline decides which photo is the front
+and which are details; the user only supplies the photos.
 """
 
 from __future__ import annotations
@@ -21,7 +22,6 @@ from PIL import Image, ImageOps
 from zir_image_enhancer.dataset import GarmentItem
 from zir_image_enhancer.generation.fal_backend import CostLedger, FalGenerator
 from zir_image_enhancer.paths import ProjectPaths
-from zir_image_enhancer.reconstruction.photos import Role, role_from_filename
 from zir_image_enhancer.reconstruction.reconstructor import (
     ReconstructionResult,
     ReconstructionSettings,
@@ -54,7 +54,7 @@ class StudioResult:
 
 
 class StudioRunner(Protocol):
-    def run(self, photos: Sequence[Path], name: str, roles: Sequence[str] = ()) -> StudioResult: ...
+    def run(self, photos: Sequence[Path], name: str) -> StudioResult: ...
 
 
 class StudioPipeline:
@@ -76,12 +76,12 @@ class StudioPipeline:
         self._vision = VisionClient(ledger, budget, cache)
         self._work_root = self._paths.repo_root / "local" / "app_runs"
 
-    def run(self, photos: Sequence[Path], name: str, roles: Sequence[str] = ()) -> StudioResult:
-        """``roles`` optionally names each photo ("front", "back", "detail chest logo")."""
+    def run(self, photos: Sequence[Path], name: str) -> StudioResult:
+        """The pipeline decides the front and the detail photos; only ``photos`` is given."""
         if not photos:
             raise ValueError("no photos given")
         workdir = self._work_root / name
-        inputs = prepare_photos(photos, workdir / "inputs", roles)
+        inputs = prepare_photos(photos, workdir / "inputs")
         reconstructor = Reconstructor(self._settings, self._generator, self._vision)
         started = time.perf_counter()
         result = reconstructor.run(GarmentItem(name, inputs, None), workdir / "attempts")
@@ -94,25 +94,17 @@ class StudioPipeline:
         )
 
 
-def prepare_photos(
-    photos: Sequence[Path], folder: Path, roles: Sequence[str] = ()
-) -> tuple[Path, ...]:
-    """Upright RGB JPEG copies, named so the photo roles survive (01_front, 03_detail_logo).
+def prepare_photos(photos: Sequence[Path], folder: Path) -> tuple[Path, ...]:
+    """Upright RGB JPEG copies, numbered in upload order (01_..., 02_...).
 
     Phone photos come as HEIC, rotated by EXIF, or with an alpha channel; the edit model
-    reads none of that reliably, so every photo is normalised once here.
+    reads none of that reliably, so every photo is normalised once here. The pipeline works
+    out the roles from the images, so nothing is encoded in the file name.
     """
     folder.mkdir(parents=True, exist_ok=True)
     prepared = []
     for index, photo in enumerate(photos, start=1):
-        role = roles[index - 1].strip() if index - 1 < len(roles) else ""
-        if role:
-            stem = f"{index:02d}_{_slug(role)}"
-        elif role_from_filename(Path(photo)).role is not Role.UNKNOWN:
-            # Already named by the user (01_front.jpg, 03_detail_chest-logo.jpg).
-            stem = Path(photo).stem
-        else:
-            stem = f"{index:02d}_{_slug(Path(photo).stem)}"
+        stem = f"{index:02d}_{_slug(Path(photo).stem)}"
         target = folder / f"{stem}.jpg"
         ImageOps.exif_transpose(Image.open(photo)).convert("RGB").save(target, quality=95)
         prepared.append(target)

@@ -1,10 +1,10 @@
 """Score a generation run on the holdout with the official scorer and log it.
 
-Each ``cand_<k>`` folder is scored as its own "team" by the starter repo's
-``eval_val.py``. On top of that we report the best-of-K score: what we would get if
+Each ``cand_<k>`` folder is scored as its own "team" by the vendored
+``scripts/eval_val.py``. On top of that we report the best-of-K score: what we would get if
 the selector always picked the best candidate, which is the ceiling for selection.
 
-    python scripts/score_run.py --run holdout_nb21_baseline
+    uv run --extra scorer python scripts/score_run.py --run holdout_nb21_baseline
 """
 
 from __future__ import annotations
@@ -41,8 +41,8 @@ def score_candidate(
 ) -> Path:
     out_dir = run_dir / "scores" / candidate
     command = [
-        str(paths.scorer_python()),
-        str(paths.starter_root / "scripts" / "eval_val.py"),
+        str(sys.executable),
+        str(paths.repo_root / "scripts" / "eval_val.py"),
         "--pairs",
         str(pairs),
         "--preds",

@@ -6,9 +6,9 @@
 
     python scripts/make_capture_manifest.py --photos local/captures
 
-Photos are listed in name order, and the protocol says the first one is the front, so name
-them so the front sorts first. HEIC is converted to JPEG next to the original, because the
-edit model and the scorer do not read HEIC.
+Photos are listed in name order. The pipeline works out the roles (front, back, detail) from
+the images themselves, so names are only for your own reference. HEIC is converted to JPEG
+next to the original, because the edit model and the scorer do not read HEIC.
 """
 
 from __future__ import annotations

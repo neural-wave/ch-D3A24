@@ -115,8 +115,8 @@ def _collect_photos(
     gallery: list[str | tuple[str, str | None]] | None,
     camera: np.ndarray | None,
 ) -> list[Path]:
-    """Uploaded files keep their names (01_front.jpg, 03_detail_logo.jpg), which carry the
-    photo roles; a camera capture is saved to a temporary file and added last."""
+    """Gather the uploaded files in order; a camera capture is saved to a temporary file and
+    added last. The pipeline works out each photo's role, so names carry no meaning here."""
     photos: list[Path] = []
     for item in gallery or []:
         path = item[0] if isinstance(item, (tuple, list)) else item
@@ -141,16 +141,14 @@ def _format_log(lines: tuple[str, ...]) -> str:
 def _enhance(
     gallery: list[str | tuple[str, str | None]] | None,
     camera: np.ndarray | None,
-    roles_text: str,
 ) -> tuple[tuple[np.ndarray, np.ndarray] | None, str, str, str | None]:
     """Run the studio pipeline on the gathered photos and return the UI outputs."""
     photos = _collect_photos(gallery, camera)
     if not photos:
         return None, _EMPTY_LOG, _NO_INPUT_STATUS, None
-    roles = (roles_text or "").splitlines()
     name = time.strftime("app-%Y%m%d-%H%M%S")
     try:
-        result = _get_pipeline().run(photos, name, roles=roles)
+        result = _get_pipeline().run(photos, name)
     except MissingKeyError as error:
         return None, _EMPTY_LOG, _ERROR_STATUS.format(error=error), None
     except Exception as error:  # noqa: BLE001
@@ -168,7 +166,6 @@ def _reset() -> tuple[object, ...]:
     return (
         None,  # gallery
         None,  # camera
-        "",  # roles
         None,  # result slider
         _EMPTY_LOG,
         _MAIN_STATUS,
@@ -200,14 +197,10 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
                         height=300,
                     )
             gr.Markdown(
-                "Add the front photo first, then the back and close-ups of details "
-                "(logos, prints, buttons). All photos must show the same product.",
+                "Add the photos you have: the front, the back and close-ups of details "
+                "(logos, prints, buttons). The pipeline works out which is which. "
+                "All photos must show the same product.",
                 elem_classes=["zir-hint"],
-            )
-            roles = gr.Textbox(
-                label="Photo roles (optional, one line per photo)",
-                placeholder="front\nback\ndetail chest logo",
-                lines=3,
             )
             with gr.Row():
                 clear_btn = gr.Button("Clear", variant="secondary")
@@ -234,7 +227,7 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
 
     run_btn.click(
         _enhance,
-        inputs=[gallery, camera, roles],
+        inputs=[gallery, camera],
         outputs=[slider, log, status, download],
     )
     clear_btn.click(
@@ -243,7 +236,6 @@ with gr.Blocks(title="Zir Image Enhancer") as demo:
         outputs=[
             gallery,
             camera,
-            roles,
             slider,
             log,
             status,

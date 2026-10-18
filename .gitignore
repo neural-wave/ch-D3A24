@@ -43,8 +43,8 @@ Thumbs.db
 # Secrets
 .env
 
-# Upstream starter clone kept only for its cached model weights and venv.
-# Everything we depend on is vendored under tools/, scripts/ and docs/.
+# Local scratch: caches, the fal ledger, app runs, and the captured datasets.
+# Everything the project depends on is vendored under tools/, scripts/ and docs/.
 local/
 .opencode/
 
@@ -58,4 +58,3 @@ submissions/
 val_out/
 val_smoke/
 val_hosted/
-data/

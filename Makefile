@@ -15,7 +15,7 @@ RUN_SCORER  = $(UV) run --extra scorer
 
 DATASET    ?= data/sartiq_neural_wave_2026
 TEAM       ?= zir
-FRAC       ?= 0.1
+FRAC       ?= 0.05
 SEED       ?= 0
 JOBS       ?= 1
 LIMIT      ?=
@@ -34,7 +34,7 @@ export FAL_KEY GEMINI_API_KEY GOOGLE_API_KEY OPENAI_API_KEY IMAGE_API_KEY
 
 .PHONY: install holdout holdout-train predict predict-identity predict-nanobanana eval \
         baseline run validate baseline-nanobanana-dry baseline-nanobanana app \
-        reconstruct score sheet gallery fmt lint type test check clean
+        reconstruct score sheet gallery preview compare fmt lint type test check clean
 
 install:  ## Create/refresh .venv with every dependency (scorer + dev)
 	$(UV) sync --all-extras
@@ -107,6 +107,13 @@ sheet:  ## Experiment: input/model/target contact sheets for runs (set RUNS="a b
 
 gallery:  ## Experiment: per-garment input/output/target galleries (set RUNS="a b", optional)
 	$(RUN) python scripts/gallery.py $(if $(RUNS),--runs $(RUNS),)
+
+preview:  ## Experiment: before/after preprocessing sheet (set SPLIT=... LIMIT=...)
+	$(RUN) python scripts/preview_preprocess.py \
+		--split $(or $(SPLIT),holdout) $(if $(LIMIT),--limit $(LIMIT),)
+
+compare:  ## Experiment: input vs preprocessed strips (set PHOTOS="a.jpg b.jpg" or a folder)
+	$(RUN) python scripts/compare_preprocess.py $(PHOTOS) --diff
 
 fmt:  ## Format and fix with ruff
 	$(RUN) ruff check --fix .

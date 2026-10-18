@@ -24,7 +24,7 @@ flowchart TD
     A["Phone photos<br/>front, back, close-ups"] --> B["Prepare<br/>upright JPEG"]
     B --> S{{"Input assessment<br/>score + drop non-evidence"}}
     S --> C{{"Spec<br/>Gemini 2.5 Flash"}}
-    C --> D["Pick references<br/>front + pipeline-picked close-ups"]
+    C --> D["Preprocess + references<br/>OpenCV: white balance, tone,<br/>detail crops, controlled grain"]
     C --> E["Write the prompt<br/>studio style + proportions,<br/>studio light, details, sets"]
     D --> F[["Generate<br/>nano-banana 2.1 edit"]]
     E --> F
@@ -51,6 +51,7 @@ sequenceDiagram
     V-->>H: scores; non-evidence dropped
     H->>V: kept photos
     V-->>H: spec: front, type, details, proportions, photo setup, pieces
+    H->>H: preprocess references (OpenCV: normalise, crop details)
     H->>G: front + pipeline-picked close-ups, prompt
     G-->>H: packshot
     H->>V: real photo + packshot
@@ -65,6 +66,8 @@ sequenceDiagram
 ```
 
 What the gate checks: same garment, front view, colour, proportions, studio light, no person or props, no missing piece of a set, every listed detail, and no invented text or logos.
+
+Between the spec and generation, OpenCV prepares the references: it removes the phone photo's colour cast and lifts a dark or flat exposure, caps the resolution, crops the spec's detail boxes at full resolution so the model can copy logos and labels instead of redrawing them, and adds a small reproducible grain so the input stays a natural photograph. The vision steps read the originals untouched, and the gate still compares against the original front. See [`docs/PREPROCESSING.md`](docs/PREPROCESSING.md).
 
 One garment takes 20 to 60 seconds and about $0.06 to $0.13.
 
@@ -117,9 +120,11 @@ It writes the official submission layout (`<out>/<team>/<garment>/front.png`).
 | `src/zir_image_enhancer/cli.py` | `zir-run`, the batch runner |
 | `src/zir_image_enhancer/pipeline.py` | `StudioPipeline`, shared by the app and `zir-run` |
 | `src/zir_image_enhancer/reconstruction/` | Spec, prompt, references, gate and the repair loop |
+| `src/zir_image_enhancer/reconstruction/preprocess.py` | OpenCV preprocessing of the generation references |
 | `src/zir_image_enhancer/generation/` | fal client with cache and budget guard, model and studio prompt |
-| `scripts/` | Holdout evaluation (`reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py`) and the official starter scripts |
+| `scripts/` | Holdout evaluation (`reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py`, `preview_preprocess.py`, `compare_preprocess.py`) and the official starter scripts |
 | `docs/PROMPTS.md` | Every prompt we tried and how it scored |
+| `docs/PREPROCESSING.md` | The OpenCV preprocessing, its knobs and its evidence |
 | `experiments/results.csv` | Every scored run |
 | `tools/`, `docs/neural-wave-2026/` | Official scorer, baselines and challenge docs (vendored) |
 
