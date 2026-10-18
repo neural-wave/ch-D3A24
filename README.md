@@ -15,7 +15,7 @@ Everything we hand in is in [`deliverables/`](deliverables/):
 | What | Where |
 |---|---|
 | Final report, with the capture protocol | `deliverables/REPORT.pdf` (coming) |
-| Presentation video | `deliverables/video.mp4` (coming) |
+| Presentation video | link in `deliverables/VIDEO.md` (coming) |
 | Packshots for the 15 on-site garments (`g01`–`g15`) | `deliverables/d3a24_test_v3_pro.zip` |
 | Packshots for the 27 dev garments (69.77 on the dev leaderboard) | `deliverables/d3a24_dev_v3_pro.zip` |
 | The pipeline that made them (v3 with nano-banana Pro) | this repository; see [Run](#run) |
