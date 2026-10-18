@@ -6,7 +6,7 @@ studio packshot: front view, on a light background, with the real colours and de
 Built by team `D3A24` for the [Sartiq](https://www.sartiq.ai/) challenge at the
 [Neural Wave 2026 Hackathon](https://neuralwave.ch).
 
-**Live demo:** <https://96b4dc24c3535b0cb6.gradio.live> (a temporary Gradio link served from our machine during the evaluation; run it yourself with `uv run zir-app`)
+**Live demo:** <https://825652e22e901546b4.gradio.live> (a temporary Gradio link served from our machine during the evaluation; run it yourself with `uv run zir-app`)
 
 ## Deliverables
 
@@ -19,7 +19,7 @@ Everything we hand in is in [`deliverables/`](deliverables/):
 | Packshots for the 15 on-site garments (`g01`–`g15`) | `deliverables/d3a24_test_v3_pro.zip` |
 | Packshots for the 27 dev garments (69.77 on the dev leaderboard) | `deliverables/d3a24_dev_v3_pro.zip` |
 | The pipeline that made them (v3 with nano-banana Pro) | this repository; see [Run](#run) |
-| Live demo | <https://96b4dc24c3535b0cb6.gradio.live> (temporary) |
+| Live demo | <https://825652e22e901546b4.gradio.live> (temporary) |
 
 - [Deliverables](#deliverables)
 - [What it does](#what-it-does)
@@ -44,7 +44,7 @@ Two hosted models do the work, both through [fal.ai](https://fal.ai):
 | Model | Role |
 |---|---|
 | Gemini 2.5 Flash (vision) | Reads the photos before generating (the "spec") and checks the result afterwards (the "gate") |
-| nano-banana Pro or 2.1 edit (image) | Draws the packshot from the photos and a written instruction (Pro for our submission; 2.1 is the cheaper default) |
+| nano-banana Pro or 2.1 edit (image) | Draws the packshot from the photos and a written instruction (Pro by default; 2.1 is the cheaper option) |
 
 Our code around them (the harness) decides which photos are sent, writes the instruction,
 checks the result on what the jury looks at, and repairs it once if needed.
@@ -205,7 +205,7 @@ uv run zir-run --manifest data/sartiq_neural_wave_2026/test/inputs.jsonl \
     --out submissions --team d3a24
 ```
 
-Add `--model nano-banana-pro` to use the larger model. Every paid call is cached, so a
+It uses nano-banana Pro by default; add `--model nano-banana-2.1-portrait` for the cheaper model. Every paid call is cached, so a
 rerun is free.
 
 For your own photos, give `zir-run` a manifest with one row per garment:
@@ -296,7 +296,7 @@ This repo runs v3. The other versions are kept in the tag `pre-v3-only-2026-10-1
 | v2 | Spec details and sets in the prompt, named detail photos, gate, one redraw | 61.77 (24 garments) | 68.30 |
 | **v3** | v1, then the jury gate; a detail defect is fixed by editing the packshot, a global one (colour, proportions, view, crop) by drawing it again | **61.90** | **68.75** |
 | v4 | 9 versions per garment, one pick by CLIP and AlexNet embeddings, the jury gate on the top 3 | 63.01 | 69.59 |
-| **v3 with nano-banana Pro** | v3 as it runs now, with `--model nano-banana-pro` | not run | **69.77** |
+| **v3 with nano-banana Pro** | v3 as it runs now (Pro is the default model) | not run | **69.77** |
 
 v4 scored well, but it makes nine images per garment: about nine times the cost and three
 times the time. We kept v3 — one image per garment, repaired only when the jury would see a
@@ -305,8 +305,8 @@ defect — and moved it to nano-banana Pro. With the same settings, nano-banana 
 invisible-mannequin style for mannequin photos). Pro's first image also had gate defects on
 2 of 27 dev garments, against 4.
 
-Cost and time per garment: about $0.16 with nano-banana Pro and $0.06 with nano-banana 2.1
-(the default), about 20 seconds, plus a repair for about one garment in ten. The spec and
+Cost and time per garment: about $0.16 with nano-banana Pro (the default) and $0.06 with
+nano-banana 2.1, about 20 seconds, plus a repair for about one garment in ten. The spec and
 each gate check add about $0.002.
 
 ### What we tried and dropped

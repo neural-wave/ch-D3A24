@@ -45,7 +45,7 @@ MODELS: dict[str, ModelSpec] = {
             True,
             {"aspect_ratio": "2:3"},
         ),
-        # The larger model, 2.5 times the price (zir-run --model nano-banana-pro). In v3 on
+        # The larger model and the default, 2.5 times the price of 2.1. In v3 on
         # dev it scored 69.77 against 68.64 for 2.1, and its first image had gate defects on
         # 2 of 27 garments against 4. On the holdout one-shot it was only +0.19.
         ModelSpec(

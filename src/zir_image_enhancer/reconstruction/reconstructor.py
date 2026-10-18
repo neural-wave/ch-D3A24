@@ -48,7 +48,7 @@ _MAX_REFERENCES = 4
 
 @dataclass(frozen=True)
 class ReconstructionSettings:
-    model_key: str = "nano-banana-2.1-portrait"
+    model_key: str = "nano-banana-pro"
     seed: int = 0
     # "flat" (laid flat, from above), "ghost" (invisible mannequin) or "auto": ghost only when
     # the photo shows the garment on a mannequin. On the 10 holdout garments shot on a
