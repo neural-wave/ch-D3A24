@@ -3,6 +3,7 @@
     uv run --extra select python scripts/run_v4.py --split test --dry-run
     uv run --extra select python scripts/run_v4.py --split test
     uv run --extra select python scripts/run_v4.py --name ours --manifest ours.jsonl
+    uv run --extra select python scripts/run_v4.py --split dev --name pro --model nano-banana-pro
 
 Steps, each an existing script run in order (every paid call is cached, so a rerun is free):
 1. scripts/reconstruct.py once per version below, into local/runs/<name>_<version>/
@@ -19,11 +20,11 @@ import sys
 from pathlib import Path
 
 from zir_image_enhancer.dataset import load_manifest, split_manifest
+from zir_image_enhancer.generation.models import get_model
 from zir_image_enhancer.paths import ProjectPaths
 from zir_image_enhancer.selection import V4_VERSIONS
 
 SCRIPTS = Path(__file__).resolve().parent
-COST_PER_IMAGE = 0.06  # nano-banana 2.1 at about 1K; the gate and spec add about $0.002 each
 
 
 def run(command: list[str]) -> None:
@@ -41,6 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--team", default="d3a24")
     parser.add_argument("--versions", type=int, default=len(V4_VERSIONS), help="use the first N")
     parser.add_argument("--workers", type=int, default=6)
+    parser.add_argument("--model", default="nano-banana-2.1-portrait", help="the generator")
     parser.add_argument("--dry-run", action="store_true", help="print the plan and the cost")
     args = parser.parse_args(argv)
 
@@ -49,9 +51,11 @@ def main(argv: list[str] | None = None) -> int:
     garments = len(load_manifest(manifest, paths.data_root))
     name = args.name or args.split
     versions = V4_VERSIONS[: args.versions]
+    # The gate and the spec add about $0.002 each on top of the images.
+    per_image = get_model(args.model).est_cost_usd
     print(
         f"v4 on {garments} garments, {len(versions)} versions: at most "
-        f"${garments * len(versions) * COST_PER_IMAGE:.2f} (cached results are free)"
+        f"${garments * len(versions) * per_image:.2f} with {args.model} (cached results are free)"
     )
     if args.dry_run:
         for version in versions:
@@ -79,6 +83,8 @@ def main(argv: list[str] | None = None) -> int:
             str(version.seed),
             "--workers",
             str(args.workers),
+            "--model",
+            args.model,
         ]
         if version.mode == "oneshot":
             command.append("--no-gate")  # the selector gates the pick; no need to gate every one
