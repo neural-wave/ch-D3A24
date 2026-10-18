@@ -58,3 +58,6 @@ at,run,model,prompt,inputs,samples,pairs,score,colour,lpips,clip,geometry,ssim,b
 2026-10-18T02:00+00:00,holdout_v4_select_9_versions,pool,CLIP+AlexNet style selector over 9 versions,pool,1,38,63.01,,,,,,63.01,0.0,
 2026-10-18T02:00+00:00,dev_leaderboard_twoexperts,pool,CLIP+AlexNet over 7 dev versions,pool,1,27,69.78,,,,,,69.78,0.0,
 2026-10-18T02:00+00:00,dev_leaderboard_twoexperts_flat,pool,CLIP+AlexNet over 6 flat dev versions,pool,1,27,69.37,,,,,,69.37,0.0,
+2026-10-18T00:19+00:00,dev_leaderboard_v4,pool,v4: CLIP+AlexNet over 8 dev versions + gate on top 3,pool,1,27,69.59,,,,,,69.59,0.0,
+2026-10-18T00:19+00:00,dev_leaderboard_v4_pro,pool,v4 pool + 3 nano-banana Pro versions (v3 auto + flat seeds 1-2),pool,1,27,69.34,,,,,,69.34,0.46,
+2026-10-18T00:19+00:00,dev_leaderboard_v4_proflat,pool,v4 pool + 2 nano-banana Pro flat versions (seeds 1-2),pool,1,27,68.89,,,,,,68.89,0.46,

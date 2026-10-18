@@ -49,7 +49,8 @@ MODELS: dict[str, ModelSpec] = {
             {"aspect_ratio": "2:3"},
         ),
         # The larger model, 2.5 times the price. On the holdout with the same prompt it
-        # scored 61.23 against 61.04; kept to test it inside v4 (run_v4.py --model).
+        # scored 61.23 against 61.04, and as extra versions in the v4 pool it lowered dev
+        # (69.34 and 68.89 against 69.59). Kept so those runs can be reproduced.
         ModelSpec(
             "nano-banana-pro",
             "fal-ai/nano-banana-pro/edit",

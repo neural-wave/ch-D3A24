@@ -181,6 +181,7 @@ What we tried and dropped (all rows in `experiments/results.csv`, every prompt i
 | Idea | Result |
 |---|---|
 | Other generators: nano-banana Pro, FLUX.2, Seedream 4.5, Qwen-Image-Edit 2511 | 61.2, 43.4, 49.6, 54.4 |
+| nano-banana Pro versions added to the v4 pool on dev (with and without `pro_v3`) | 69.34 and 68.89 against 69.59 |
 | Pre-processing: cut-out, crop, denoise, 2x super-resolution (Real-ESRGAN) | -3.9, -1.3, -1.9, -3.0 |
 | Post-processing: colour offsets, a learned colour model, saturation, shading, background tone, stretch, blur, sharpen | -0.1 to -14 |
 | A per-garment colour correction predicted from the photo and its background | no better than none (L* error 5.08 vs 5.10) |
