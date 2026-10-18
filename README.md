@@ -15,7 +15,7 @@ Everything we hand in is in [`deliverables/`](deliverables/):
 | What | Where |
 |---|---|
 | Final report, with the capture protocol | [`deliverables/REPORT.pdf`](deliverables/REPORT.pdf) |
-| Presentation video | link in `deliverables/VIDEO.md` (coming) |
+| Presentation video | links in [`deliverables/VIDEO.md`](deliverables/VIDEO.md) |
 | Packshots for the 15 on-site garments (`g01`–`g15`) | `deliverables/d3a24_test_v3_pro.zip` |
 | Packshots for the 27 dev garments (69.77 on the dev leaderboard) | `deliverables/d3a24_dev_v3_pro.zip` |
 | The pipeline that made them (v3 with nano-banana Pro) | [this repository](https://github.com/neural-wave/ch-D3A24); see [Run](#run) |
