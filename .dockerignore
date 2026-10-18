@@ -8,6 +8,15 @@ build/
 dist/
 *.egg-info/
 
+# Tool caches and local agent state (never needed in the image, but huge if left in the
+# build context every time a linter or the agent runs).
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.opencode/
+.claude/
+
 # Datasets and generated outputs (never baked into the image)
 data/
 holdout/

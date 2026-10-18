@@ -2,7 +2,12 @@
     "name": "Zir Image Enhancer",
     "build": {
         "dockerfile": "Dockerfile",
-        "context": ".."
+        "context": "..",
+        // The default dev image is lean (no torch/scorer). Set SCORER=1 to build the
+        // heavier self-evaluation image that includes the `scorer` extra.
+        "args": {
+            "SCORER": "0"
+        }
     },
     "mounts": [
         "source=zir-model-cache,target=/root/.cache,type=volume"
@@ -23,7 +28,6 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "uv sync --all-extras &",
     "customizations": {
         "vscode": {
             "extensions": [

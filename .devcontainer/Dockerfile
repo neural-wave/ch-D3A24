@@ -15,7 +15,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # Only the essentials: the pipeline calls hosted models, build-essential covers packages
 # that compile on install, and the rest are runtime libraries torch and Gradio expect.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# BuildKit cache mounts keep the apt indices and .deb cache across rebuilds without
+# baking them into the image.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     git \
     git-lfs \
     curl \
@@ -23,8 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     libgomp1 \
     ffmpeg \
-    && git lfs install \
-    && rm -rf /var/lib/apt/lists/*
+    && git lfs install
 
 # Install OpenCode CLI globally
 RUN curl -fsSL https://opencode.ai/v2/install | bash \
@@ -33,14 +36,32 @@ RUN curl -fsSL https://opencode.ai/v2/install | bash \
 
 WORKDIR /workspaces/zir-image-enhancer
 
+# The heavy `scorer` extra (torch + CUDA/onnxruntime/open_clip/rembg) is opt-in: the app
+# and CLI only call hosted models, so the default dev image stays lean. Build the eval
+# image with `--build-arg SCORER=1`. Declared here so flipping it does not invalidate the
+# apt/opencode layers above.
+ARG SCORER=0
+
 # Dependencies first (tools/ before the sync because the scorer is a path dependency),
-# then the source. Installing at build time keeps the container ready on start and makes
-# install errors visible during the build rather than at first run. `--all-extras` pulls
-# the `scorer` extra; the `dev` group is installed by default.
+# then the source. The uv cache mount makes rebuilds reuse already-downloaded wheels even
+# though the runtime model-cache volume at /root/.cache is not mounted during the build.
 COPY pyproject.toml uv.lock README.md ./
 COPY tools ./tools
-RUN uv sync --all-extras --no-install-project --locked
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    set -eu; \
+    if [ "$SCORER" = "1" ]; then EXTRAS="--all-extras"; else EXTRAS=""; fi; \
+    uv sync $EXTRAS --no-install-project --locked
 
+# Install the project itself once the source is present. Dependencies are already in
+# place from the layer above, so this sync only wires up the package and the editable
+# scorer.
 COPY . .
-RUN uv sync --all-extras --locked \
-    && uv run python -c "import torch, sartiq_score, zir_image_enhancer; print('env ok')"
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    set -eu; \
+    if [ "$SCORER" = "1" ]; then EXTRAS="--all-extras"; else EXTRAS=""; fi; \
+    uv sync $EXTRAS --locked; \
+    if [ "$SCORER" = "1" ]; then \
+        uv run python -c "import torch, sartiq_score, zir_image_enhancer; print('env ok (scorer)')"; \
+    else \
+        uv run python -c "import zir_image_enhancer; print('env ok')"; \
+    fi
