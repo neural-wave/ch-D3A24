@@ -479,28 +479,42 @@ GENERATE_JS = r"""
     overlay.innerHTML = `<div><div id="sartiq-phrase" style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
       font-size:clamp(40px,7vw,96px);line-height:.95;letter-spacing:-.06em;font-weight:650"></div>
       <div style="width:52px;height:2px;background:#333;margin:34px auto 0;overflow:hidden">
-      <div style="width:100%;height:100%;background:#fff;animation:sartiq-load 3.7s linear both"></div></div></div>`;
+      <div style="width:100%;height:100%;background:#fff;animation:sartiq-load 1.4s ease-in-out infinite"></div></div></div>`;
     const style = document.createElement("style");
-    style.textContent = `@keyframes sartiq-load{from{transform:translateX(-100%)}to{transform:translateX(0)}}`;
+    style.textContent = `@keyframes sartiq-load{from{transform:translateX(-100%)}to{transform:translateX(100%)}}`;
     document.head.appendChild(style);
     document.body.appendChild(overlay);
   }
 
   requestAnimationFrame(() => overlay.style.opacity = "1");
   const node = overlay.querySelector("#sartiq-phrase");
-  phrases.forEach((text, index) => setTimeout(() => {
-    node.style.opacity = "0";
-    setTimeout(() => { node.textContent = text; node.style.opacity = "1"; }, 150);
-  }, index * 850));
   node.style.transition = "opacity .25s ease";
   node.textContent = phrases[0];
-  setTimeout(() => {
-    overlay.style.opacity = "0";
-    setTimeout(() => overlay.remove(), 400);
-    document.querySelector("#result")?.scrollIntoView({behavior:"smooth", block:"center"});
-  }, 3700);
+  // The overlay stays until FINISH_JS runs, i.e. until the pipeline answers (about
+  // 20 to 60 s), so the phrases keep cycling instead of stopping after a fixed time.
+  let index = 0;
+  clearInterval(window.__sartiqPhrases);
+  window.__sartiqPhrases = setInterval(() => {
+    index = (index + 1) % phrases.length;
+    node.style.opacity = "0";
+    setTimeout(() => { node.textContent = phrases[index]; node.style.opacity = "1"; }, 150);
+  }, 2200);
 
   return [gallery];
+}
+"""
+
+# Runs after the pipeline returns (or fails), so the loading screen lasts as long as the
+# generation does.
+FINISH_JS = r"""
+() => {
+  clearInterval(window.__sartiqPhrases);
+  const overlay = document.getElementById("sartiq-generating");
+  if (overlay) {
+    overlay.style.opacity = "0";
+    setTimeout(() => overlay.remove(), 400);
+  }
+  document.querySelector("#result")?.scrollIntoView({behavior:"smooth", block:"center"});
 }
 """
 
@@ -601,7 +615,7 @@ with gr.Blocks(title="D3A24 x sartiq") as demo:
         outputs=[slider, download],
         js=GENERATE_JS,
         show_progress="hidden",
-    )
+    ).then(fn=None, inputs=None, outputs=None, js=FINISH_JS)
     clear_btn.click(
         fn=reset,
         inputs=None,

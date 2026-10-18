@@ -11,7 +11,7 @@ Team D3A24 · Sartiq challenge · Neural Wave 2026
 
 Source code (the runnable pipeline, with setup and run instructions): <https://github.com/neural-wave/ch-D3A24>
 
-Live demo (temporary, served from our machine): <https://825652e22e901546b4.gradio.live>
+Live demo (temporary, served from our machine): <https://6c0308016f1cedb489.gradio.live>
 
 Both archives use the official layout `d3a24/<garment_id>/front.png`, were checked with `scripts/make_submission.py` (0 errors) and were made by the pipeline in this repo: v3 with nano-banana Pro. To rebuild them (every paid call is cached, so a rerun is free):
 

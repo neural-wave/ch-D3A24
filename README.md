@@ -6,7 +6,7 @@ studio packshot: front view, on a light background, with the real colours and de
 Built by team `D3A24` for the [Sartiq](https://www.sartiq.ai/) challenge at the
 [Neural Wave 2026 Hackathon](https://neuralwave.ch).
 
-**Live demo:** <https://825652e22e901546b4.gradio.live> (a temporary Gradio link served from our machine during the evaluation; run it yourself with `uv run zir-app`)
+**Live demo:** <https://6c0308016f1cedb489.gradio.live> (a temporary Gradio link served from our machine during the evaluation; run it yourself with `uv run zir-app`)
 
 ## Deliverables
 
@@ -19,7 +19,7 @@ Everything we hand in is in [`deliverables/`](deliverables/):
 | Packshots for the 15 on-site garments (`g01`–`g15`) | `deliverables/d3a24_test_v3_pro.zip` |
 | Packshots for the 27 dev garments (69.77 on the dev leaderboard) | `deliverables/d3a24_dev_v3_pro.zip` |
 | The pipeline that made them (v3 with nano-banana Pro) | [this repository](https://github.com/neural-wave/ch-D3A24); see [Run](#run) |
-| Live demo | <https://825652e22e901546b4.gradio.live> (temporary) |
+| Live demo | <https://6c0308016f1cedb489.gradio.live> (temporary) |
 
 - [Deliverables](#deliverables)
 - [What it does](#what-it-does)
