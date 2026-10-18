@@ -75,10 +75,11 @@ This repo runs v3. The other versions are kept in the tag `pre-v3-only-2026-10-1
 | v2 | Spec details and sets in the prompt, named detail photos, gate, one redraw | 61.77 (24 garments) | 68.30 |
 | **v3** | v1, then the jury gate; a detail defect is fixed by editing the packshot, a global one (colour, proportions, view, crop) by drawing it again | **61.90** | **68.75** |
 | v4 | 9 versions per garment, one pick by CLIP and AlexNet embeddings, the jury gate on the top 3 | 63.01 | 69.59 |
+| **v3 with nano-banana Pro** | v3 as it runs now, with `--model nano-banana-pro` | not run | **69.77** |
 
-v4 scored best, but it makes nine images per garment: about nine times the cost and three times the time. We kept v3: one image per garment, repaired only when the jury would see a defect.
+v4 scored well, but it makes nine images per garment: about nine times the cost and three times the time. We kept v3, one image per garment repaired only when the jury would see a defect, and moved it to nano-banana Pro. With the same settings, nano-banana 2.1 scored 68.64 on dev (the 68.75 above drew every garment laid flat; v3 now uses the invisible-mannequin style for mannequin photos). Pro's first image also had gate defects on 2 of 27 dev garments, against 4.
 
-Cost and time per garment: about $0.06 and 20 seconds with nano-banana 2.1, plus a repair for about one garment in ten. With nano-banana Pro (`--model nano-banana-pro`) about $0.16. The spec and each gate check add about $0.002.
+Cost and time per garment: about $0.16 with nano-banana Pro and $0.06 with nano-banana 2.1 (the default), about 20 seconds, plus a repair for about one garment in ten. The spec and each gate check add about $0.002.
 
 ## Requirements
 

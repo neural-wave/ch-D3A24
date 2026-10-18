@@ -61,3 +61,6 @@ at,run,model,prompt,inputs,samples,pairs,score,colour,lpips,clip,geometry,ssim,b
 2026-10-18T00:19+00:00,dev_leaderboard_v4,pool,v4: CLIP+AlexNet over 8 dev versions + gate on top 3,pool,1,27,69.59,,,,,,69.59,0.0,
 2026-10-18T00:19+00:00,dev_leaderboard_v4_pro,pool,v4 pool + 3 nano-banana Pro versions (v3 auto + flat seeds 1-2),pool,1,27,69.34,,,,,,69.34,0.46,
 2026-10-18T00:19+00:00,dev_leaderboard_v4_proflat,pool,v4 pool + 2 nano-banana Pro flat versions (seeds 1-2),pool,1,27,68.89,,,,,,68.89,0.46,
+2026-10-18T01:52+00:00,dev_leaderboard_v3_hybrid,nano-banana-2.1-portrait,v3 jury: one-shot + gate + edit or redraw (flat style),jury,1,27,68.75,,,,,,68.75,0.06,
+2026-10-18T01:52+00:00,dev_leaderboard_v3_auto,nano-banana-2.1-portrait,v3 jury with the auto style (ghost on mannequin photos),jury,1,27,68.64,,,,,,68.64,0.05,
+2026-10-18T01:52+00:00,dev_leaderboard_v3_pro,nano-banana-pro,v3 jury with the auto style (ghost on mannequin photos),jury,1,27,69.77,,,,,,69.77,0.16,
