@@ -33,13 +33,10 @@ class ModelSpec:
 MODELS: dict[str, ModelSpec] = {
     spec.key: spec
     for spec in (
-        # The official baseline model (about $0.06 per edit according to the organisers).
-        # Its web search option stays off (the default): retrieving product images is
-        # against the rules and disqualifies the garment.
-        ModelSpec("nano-banana-2.1", "google/nano-banana-2.1/edit", 14, 0.06, True),
-        # Same model with a portrait canvas like the targets (about 2:3). With "auto" it
-        # keeps the input's aspect, and landscape inputs came back as wide, spread-out
-        # garments that lost silhouette IoU against the narrow targets.
+        # The official baseline model (about $0.06 per edit) with a portrait canvas like the
+        # targets (about 2:3). With "auto" it keeps the input's aspect, and landscape inputs
+        # came back as wide, spread-out garments that lost silhouette IoU. Its web search
+        # option stays off (the default): retrieving product images is against the rules.
         ModelSpec(
             "nano-banana-2.1-portrait",
             "google/nano-banana-2.1/edit",
@@ -48,9 +45,9 @@ MODELS: dict[str, ModelSpec] = {
             True,
             {"aspect_ratio": "2:3"},
         ),
-        # The larger model, 2.5 times the price. On the holdout with the same prompt it
-        # scored 61.23 against 61.04, and as extra versions in the v4 pool it lowered dev
-        # (69.34 and 68.89 against 69.59). Kept so those runs can be reproduced.
+        # The larger model, 2.5 times the price (zir-run --model nano-banana-pro). On the
+        # holdout with the same prompt it scored 61.23 against 61.04; in v3 on dev its first
+        # image had gate defects on 2 of 27 garments against 4 of 27.
         ModelSpec(
             "nano-banana-pro",
             "fal-ai/nano-banana-pro/edit",

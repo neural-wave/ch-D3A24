@@ -1,27 +1,27 @@
 # Prompt history
 
-Every prompt we sent to a model, its full text, and the runs it was used in. Scores are the official scorer on our holdout (38 pairs grouped by target) unless the row says otherwise; all rows are in `experiments/results.csv`. Gaps under about 1.5 points are within noise. Removed prompts can be recovered from the tag `exp-snapshot-2026-10-17` or the commits named below.
+Every prompt we sent to a model, its full text, and the runs it was used in. Scores are the official scorer on our holdout (38 pairs grouped by target) unless the row says otherwise; all rows are in `experiments/results.csv`. Gaps under about 1.5 points are within noise. Removed prompts can be recovered from the tags `exp-snapshot-2026-10-17` and `pre-v3-only-2026-10-18` or the commits named below.
 
 ## Summary
 
 | Prompt | Model | Status | Best result |
 |---|---|---|---|
-| `baseline` (official) | nano-banana 2.1 | **in use** as v4 versions A (seeds 0, 1) | 60.92 (portrait canvas); 68.59 on dev |
-| `baseline-keep` (official + change as little as possible) | nano-banana 2.1 | **in use** as v4 versions B | 61.03 on 19 pairs; 68.62 on dev |
-| `baseline-white` (official + white background) | nano-banana 2.1 | **in use** as v4 versions C | 59.61 on 19 pairs; 68.66 on dev |
-| `studio-ghost-v1` | nano-banana 2.1 | in the code (`--studio-style auto` for mannequin photos); not in v4 | +1.3 on mannequin photos |
+| `baseline` (official) | nano-banana 2.1 | removed with v4 (versions A, seeds 0 and 1) | 60.92 (portrait canvas); 68.59 on dev |
+| `baseline-keep` (official + change as little as possible) | nano-banana 2.1 | removed with v4 (versions B) | 61.03 on 19 pairs; 68.62 on dev |
+| `baseline-white` (official + white background) | nano-banana 2.1 | removed with v4 (versions C) | 59.61 on 19 pairs; 68.66 on dev |
+| `studio-ghost-v1` | nano-banana 2.1 | **in use** (the auto style, for mannequin photos) | +1.3 on mannequin photos |
 | `studio-white-v1` | nano-banana 2.1, Pro, FLUX.2, Seedream | removed | 61.23 (Pro) |
-| `studio-style-v2` | nano-banana 2.1 | **in use** (base of the harness; v4 versions v3, v1 seeds 1-2) | **61.82** |
+| `studio-style-v2` | nano-banana 2.1 | **in use** (the one-shot, and the base of the redraw repair) | **61.82** |
 | `studio-flat-v1` | nano-banana 2.1 | removed | 61.29 on 22 flat-lay pairs |
 | Multi-photo wrapper | nano-banana 2.1 | removed | 60.71 on 43 pairs (first photo only: 61.46) |
 | Detail close-up wrapper | nano-banana 2.1 | **in use** (named detail photos) | -1.81 with unnamed close-ups |
 | Spec-written prompt | nano-banana 2.1 | removed | 58.84 |
-| Harness lines | nano-banana 2.1 | **in use**: proportions, studio light, details, pieces | 61.77 on 24 pairs |
+| Harness lines | nano-banana 2.1 | **in use** in the redraw repair: proportions, studio light, details, pieces | 61.77 on 24 pairs |
 | Flatten, length, vivid colour, single zip lines | nano-banana 2.1 | removed | 60.40 (v2), 60.72 (flatten only, v3) |
 | Relight | nano-banana 2.1 | removed | -1.46 on 8 pairs |
 | Triage | Gemini 2.5 Flash | removed (the spec now picks the front) | 61.67 on shuffled photos |
 | Spec | Gemini 2.5 Flash | **in use** | |
-| Gate | Gemini 2.5 Flash | **in use** (gate version 4: the jury's criteria) in v3 and on the v4 pick | v3 (jury mode): 61.90 |
+| Gate | Gemini 2.5 Flash | **in use** (gate version 4: the jury's criteria) | v3: 61.90 |
 
 ## 1. Generation prompts (one-shot)
 
@@ -78,7 +78,7 @@ Turn the {source} of this garment into a fashion catalogue packshot. {references
 
 ### `studio-ghost-v1` (in use for photos on a mannequin)
 
-Most adult targets are shot straight on with the volume of an invisible mannequin, not laid flat. Used by `--studio-style auto` when the spec says the photo shows the garment on a mannequin.
+Most adult targets are shot straight on with the volume of an invisible mannequin, not laid flat. Used by the auto style when the spec says the photo shows the garment on a mannequin.
 
 ```text
 Turn the {source} of this garment into an e-commerce product photo in the invisible-mannequin style. {references}Show only the garment, front view, shot straight on at chest height (not from above), centred and symmetric, with the natural three-dimensional volume it has when worn by an invisible mannequin: level, rounded shoulders, sleeves falling naturally close to the sides of the body, buttons and zips closed and the collar tidy; trousers, jeans and shorts hang straight with both legs parallel; dresses and skirts fall naturally. Plain seamless light-grey studio background (RGB 240,240,240), soft, even, diffused light and only a faint soft shadow under the garment. The whole garment is visible with a margin on every side and fills most of a portrait frame. Keep exactly the same garment: colour and shade, fabric and texture, pattern, print, logos and small details, length and proportions. Remove any person, mannequin, hanger, price tag, floor and props, and never add accessories, other garments, text or watermarks.

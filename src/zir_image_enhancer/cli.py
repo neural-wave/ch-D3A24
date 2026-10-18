@@ -23,6 +23,7 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from zir_image_enhancer.generation.models import MODELS
 from zir_image_enhancer.pipeline import (
     DEFAULT_VIEW,
     MissingKeyError,
@@ -30,6 +31,7 @@ from zir_image_enhancer.pipeline import (
     StudioResult,
     StudioRunner,
 )
+from zir_image_enhancer.reconstruction.reconstructor import ReconstructionSettings
 
 _SPLIT_DIRS = {"train", "dev", "test"}
 
@@ -96,10 +98,10 @@ def main(argv: list[str] | None = None, pipeline: StudioRunner | None = None) ->
     parser.add_argument("--limit", type=int, default=None, help="only the first N rows")
     parser.add_argument("--workers", type=int, default=4, help="garments processed in parallel")
     parser.add_argument(
-        "--mode",
-        choices=["oneshot", "harness", "jury"],
-        default=None,
-        help="pipeline version (default: the app's default)",
+        "--model",
+        choices=list(MODELS),
+        default=ReconstructionSettings().model_key,
+        help="the generator (default: %(default)s)",
     )
     parser.add_argument(
         "--dry-run",
@@ -136,7 +138,7 @@ def main(argv: list[str] | None = None, pipeline: StudioRunner | None = None) ->
 
     if pipeline is None:
         try:
-            pipeline = StudioPipeline()
+            pipeline = StudioPipeline(ReconstructionSettings(model_key=args.model))
         except MissingKeyError as error:
             raise SystemExit(f"error: {error}") from error
     runner = pipeline
@@ -144,7 +146,7 @@ def main(argv: list[str] | None = None, pipeline: StudioRunner | None = None) ->
     def one(job: tuple[str, list[Path], Path]) -> tuple[str, Path, StudioResult | Exception]:
         garment_id, inputs, dest = job
         try:
-            return garment_id, dest, runner.run(inputs, garment_id, mode=args.mode)
+            return garment_id, dest, runner.run(inputs, garment_id)
         except Exception as error:  # noqa: BLE001
             # One failed garment must not stop the batch; it is reported at the end.
             return garment_id, dest, error

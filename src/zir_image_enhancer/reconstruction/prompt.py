@@ -1,4 +1,4 @@
-"""Reconstruction prompts: the studio prompt plus short constraints from the garment spec."""
+"""The two repair prompts: draw the garment again, or edit the one-shot packshot."""
 
 from __future__ import annotations
 
@@ -16,10 +16,11 @@ _STUDIO_LIGHT = (
 )
 
 
-def build_harness_prompt(
-    spec: GarmentSpec, references: Sequence[Reference], fix: str = "", style: str = "flat"
+def build_redraw_prompt(
+    spec: GarmentSpec, references: Sequence[Reference], fix: str, style: str = "flat"
 ) -> str:
-    """The studio prompt (best on the holdout) plus short constraints from the spec.
+    """Repair for a global defect: the studio prompt plus short constraints from the spec
+    and the gate's fix, with the front photo and the named close-ups.
 
     The fully spec-written prompt scored 3 points lower, so the proven prompt stays the base
     and the spec only adds what the photo alone does not enforce: geometry, studio light and
@@ -38,8 +39,7 @@ def build_harness_prompt(
     if spec.details:
         keep = "; ".join(f"{d.name} ({d.location}): {d.description}" for d in spec.details)
         lines.append(f"Keep these details exactly: {keep}.")
-    if fix:
-        lines.append(f"A previous attempt had these problems; fix them: {fix}")
+    lines.append(f"A previous attempt had these problems; fix them: {fix}")
     return " ".join(lines)
 
 
@@ -55,8 +55,8 @@ def pieces_text(pieces: Sequence[str]) -> str:
     )
 
 
-def build_edit_repair_prompt(references: Sequence[Reference], fix: str) -> str:
-    """v3 repair: edit the one-shot packshot instead of drawing the garment again.
+def build_edit_prompt(references: Sequence[Reference], fix: str) -> str:
+    """Repair for detail defects: edit the one-shot packshot instead of drawing it again.
 
     Regenerating from the phone photo fixed the detail but moved shape, colour and framing
     (3 of 4 holdout repairs lost points). Image 1 is the packshot to keep; the real photos

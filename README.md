@@ -15,11 +15,11 @@ Two hosted models do the work, both through [fal.ai](https://fal.ai):
 | Gemini 2.5 Flash (vision) | Reads the photos before generating (the "spec") and checks the result afterwards (the "gate") |
 | nano-banana 2.1 edit (image) | Draws the packshot from the photos and a written instruction |
 
-Our code around them (the harness) decides which photos are sent, writes the instruction, checks the result on what the jury looks at and repairs it once if needed. For the submission (v4) it also generates several versions of each garment and picks one with two small embedding models.
+Our code around them (the harness) decides which photos are sent, writes the instruction, checks the result on what the jury looks at and repairs it once if needed.
 
 ## How it works
 
-One garment through v3, the app's default: it keeps the prompt that scores best on the leaderboard and only steps in when the check finds a defect the jury would see (crop, logos, text, zips and buttons, seams, texture or colour).
+One garment through the pipeline (v3): it keeps the prompt that scores best on the leaderboard and only steps in when the check finds a defect the jury would see (crop, logos, text, zips and buttons, seams, texture or colour).
 
 ```mermaid
 flowchart TD
@@ -46,7 +46,7 @@ sequenceDiagram
     participant H as Harness
     participant V as Gemini 2.5 Flash
     participant G as nano-banana 2.1
-    U->>App: photos, optional roles, version
+    U->>App: photos, optional roles
     App->>H: StudioPipeline.run
     H->>V: all photos
     V-->>H: spec: front, type, details, proportions, pieces
@@ -65,101 +65,75 @@ sequenceDiagram
 
 What the gate checks: same garment, front view, nothing cropped, logos and text, zips and buttons, seams, texture, colour, proportions, studio light, no person or props, no missing piece of a set, every listed detail, and no invented text or logos.
 
-### v4: several versions, one pick
+### How we got here
 
-```mermaid
-flowchart LR
-    P["Phone photos"] --> V1[["v3"]] & V2[["v1, seeds 1-2"]] & V3[["official prompt, seeds 0-1"]] & V4[["change as little as possible, seeds 0-1"]] & V5[["white background, seeds 0-1"]]
-    V1 & V2 & V3 & V4 & V5 --> S{{"Selector<br/>CLIP + AlexNet<br/>house style + same garment"}}
-    S -->|top 3, in order| G{{"Jury gate"}}
-    G --> O["First pick without defects"]
-```
-
-nano-banana gives a different image every time, and on our holdout the best of 9 versions would score far higher than any single one (65.9 against 61.9). v4 picks without the target: two embedding models compare each candidate with the studio photos of the training set, CLIP (what the garment is, overall style) and AlexNet (the network LPIPS uses: texture and local structure). A candidate ranks high when it is close to that house style and to the garment's own photo. The jury gate then checks the top three in order, so a stylish but wrong image is never kept.
-
-The gain grows with every distinct version in the pool, about +0.2 each from 2 to 9 versions on the holdout, while the best single version stays at 61.9.
-
-### Versions
-
-All four run in the app ("Pipeline version" selector). v1 to v3 also run in `zir-run` / `scripts/reconstruct.py` with `--mode`; v4 in batch is `scripts/run_v4.py`, the pipeline we submit.
+This repo runs v3. The other versions are kept in the tag `pre-v3-only-2026-10-18`.
 
 | Version | What it does | Holdout (38) | Dev leaderboard |
 |---|---|---|---|
-| v1 `oneshot` | Studio prompt and the front photo, one generation | 61.82 | 68.62 |
-| v2 `harness` | Spec details and sets in the prompt, named detail photos, gate, one repair | 61.77 (24 garments) | 68.30 |
-| v3 `jury` (app default) | v1, then the jury gate; a detail defect is fixed by editing the packshot, a global one (colour, proportions, view, crop) by drawing it again | 61.90 | 68.75 |
-| **v4** (app option, `scripts/run_v4.py`) | 9 versions per garment, one pick by two embedding experts, the jury gate on the top 3 | **63.01** | **69.59** |
+| v1 | Studio prompt and the front photo, one generation | 61.82 | 68.62 |
+| v2 | Spec details and sets in the prompt, named detail photos, gate, one redraw | 61.77 (24 garments) | 68.30 |
+| **v3** | v1, then the jury gate; a detail defect is fixed by editing the packshot, a global one (colour, proportions, view, crop) by drawing it again | **61.90** | **68.75** |
+| v4 | 9 versions per garment, one pick by CLIP and AlexNet embeddings, the jury gate on the top 3 | 63.01 | 69.59 |
 
-Cost and time: about $0.06 and 20 to 60 seconds per version and garment (v1 to v3: one version, plus a repair for about one garment in ten; v4: nine, about $0.55 per garment). The spec and each gate check add about $0.002.
+v4 scored best, but it makes nine images per garment: about nine times the cost and three times the time. We kept v3: one image per garment, repaired only when the jury would see a defect.
+
+Cost and time per garment: about $0.06 and 20 seconds with nano-banana 2.1, plus a repair for about one garment in ten. With nano-banana Pro (`--model nano-banana-pro`) about $0.16. The spec and each gate check add about $0.002.
 
 ## Requirements
 
 - [uv](https://docs.astral.sh/uv/) (it installs Python 3.11+ for you)
 - A fal.ai API key with balance
-- No GPU: both models run on fal; the v4 selector runs on CPU
+- No GPU: both models run on fal
 
 ## Run it
 
 1. Copy `.env.example` to `.env` and set `FAL_KEY`.
-2. Start the app from the repo root (`--extra select` adds the local models v4 needs; `uv run zir-app` alone runs v1 to v3):
+2. Start the app from the repo root:
 
    ```bash
-   uv run --extra select zir-app
+   uv run zir-app
    ```
 
-3. Open `http://localhost:7860`, upload the front photo first, then the back and close-ups, pick the version and press **Create studio shot**.
-
-Both versions take one to five photos of the same garment. v3 (the default) makes one image: about 20 seconds and $0.06. v4 makes nine and picks one: about a minute and $0.55, and the better pick on average.
+3. Open `http://localhost:7860`, upload one to five photos of the same garment (the front first, then the back and close-ups) and press **Create studio shot**.
 
 Tips:
 
 - Detail photos are only used when they have a role. Type one role per photo in the app (`front`, `back`, `detail chest logo`) or put it in the file name (`03_detail_chest-logo.jpg`).
 - Add `GRADIO_SHARE=1` before the command to get an https link a phone can open (needed for the camera).
 - Every run keeps its photos and attempts in `local/app_runs/<name>/`.
-- v4 in the app ranks one garment at a time with the signal scales measured on the holdout, so it picks as the batch does (63.01 on the holdout either way).
 - Spending stops at `ZIR_FAL_BUDGET_USD` in `.env`, counted in `local/fal_ledger.jsonl`.
 
-### The submission (v4)
+### A whole split (the submission)
 
-Print the plan and the cost first, then run it:
+`zir-run` runs the same pipeline over a manifest and writes the submission layout, `submissions/<team>/<garment_id>/front.png`. Check what it will do first, then run it:
 
 ```bash
-uv run --extra select python scripts/run_v4.py --split test --dry-run
+uv run zir-run --manifest data/sartiq_neural_wave_2026/test/inputs.jsonl --out submissions --team d3a24 --dry-run
 ```
 
 ```bash
-uv run --extra select python scripts/run_v4.py --split test
+uv run zir-run --manifest data/sartiq_neural_wave_2026/test/inputs.jsonl --out submissions --team d3a24
 ```
 
-It generates the 9 versions, picks one per garment, checks it with the gate and writes `local/submit/d3a24_test_v4.zip` with the submission limits checked. Every paid call is cached, so a rerun is free.
-
-### Our own photos
-
-Put one folder of photos per garment in `local/captures/`, then build the manifest and run v4 on it:
+Add `--model nano-banana-pro` to use the larger model. Every paid call is cached, so a rerun is free. Then check the folder with the official validator, which also writes `d3a24.zip`:
 
 ```bash
-uv run python scripts/make_capture_manifest.py --photos local/captures
+uv run --extra scorer python scripts/make_submission.py --submissions submissions --team d3a24 --dataset data/sartiq_neural_wave_2026 --zip
 ```
 
-```bash
-uv run --extra select python scripts/run_v4.py --name ours --manifest local/captures/inputs.jsonl
-```
-
-`uv run zir-run --manifest local/captures/inputs.jsonl --out local/submissions --team d3a24` runs v3 instead: one version, cheaper.
+For your own photos, use the app, or give `zir-run` a manifest with one row per garment: `{"garment_id": "c01", "inputs": ["C:/photos/c01/1.jpg", "C:/photos/c01/2.jpg"]}`.
 
 ## Project layout
 
 | Path | What it is |
 |---|---|
 | `src/zir_image_enhancer/app.py` | The Gradio app |
-| `src/zir_image_enhancer/cli.py` | `zir-run`, the batch runner (v1 to v3) |
-| `src/zir_image_enhancer/pipeline.py` | `StudioPipeline`, shared by the app and `zir-run` (v1 to v4) |
-| `src/zir_image_enhancer/selection.py`, `embeddings.py` | v4: the nine versions, the ranking and the gate fallback, the CLIP and AlexNet experts |
-| `src/zir_image_enhancer/reconstruction/` | Spec, prompts, references, gate and the repair loop |
-| `src/zir_image_enhancer/generation/` | fal client with cache and budget guard, model and studio prompts |
-| `scripts/run_v4.py`, `select_versions.py`, `make_zip.py` | v4 in batch: the versions, one pick per garment, the leaderboard ZIP |
-| `scripts/reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py` | Holdout runs, official scoring, side-by-side sheets |
-| `scripts/eval_val.py`, `make_holdout.py`, `make_submission.py` | Official starter scripts (vendored) |
+| `src/zir_image_enhancer/cli.py` | `zir-run`, the batch runner |
+| `src/zir_image_enhancer/pipeline.py` | `StudioPipeline`, shared by the app and `zir-run`: prepares the photos, runs the reconstructor |
+| `src/zir_image_enhancer/reconstruction/` | Spec, gate, repair prompts, reference photos and the v3 loop (`reconstructor.py`) |
+| `src/zir_image_enhancer/generation/` | fal client with cache and budget guard, the models and the studio prompts |
+| `scripts/eval_val.py`, `make_holdout.py`, `make_submission.py` | Official starter scripts (vendored): holdout, scoring, validation and ZIP |
 | `docs/PROMPTS.md` | Every prompt we tried and how it scored |
 | `experiments/results.csv` | Every scored run |
 | `tools/`, `docs/neural-wave-2026/` | Official scorer, baselines and challenge docs (vendored) |
@@ -174,14 +148,14 @@ Scores come from the official scorer (colour 40%, LPIPS 25%, CLIP 15%, silhouett
 | Official baseline (nano-banana 2.1, first photo) | 60.22 |
 | v1, one-shot studio prompt | 61.82 |
 | v3, one-shot + jury gate + edit or redraw | 61.90 |
-| v4, 9 versions + selector | 63.01 |
+| v4, 9 versions + selector (in the tag) | 63.01 |
 
-What we tried and dropped (all rows in `experiments/results.csv`, every prompt in `docs/PROMPTS.md`, removed code in the tags `exp-snapshot-2026-10-17` and `pre-cleanup-2026-10-17`):
+What we tried and dropped (all rows in `experiments/results.csv`, every prompt in `docs/PROMPTS.md`, removed code in the tags `exp-snapshot-2026-10-17`, `pre-cleanup-2026-10-17` and `pre-v3-only-2026-10-18`):
 
 | Idea | Result |
 |---|---|
 | Other generators: nano-banana Pro, FLUX.2, Seedream 4.5, Qwen-Image-Edit 2511 | 61.2, 43.4, 49.6, 54.4 |
-| nano-banana Pro versions added to the v4 pool on dev (with and without `pro_v3`) | 69.34 and 68.89 against 69.59 |
+| nano-banana Pro versions added to the v4 pool on dev (with and without v3 in Pro) | 69.34 and 68.89 against 69.59 |
 | Pre-processing: cut-out, crop, denoise, 2x super-resolution (Real-ESRGAN) | -3.9, -1.3, -1.9, -3.0 |
 | Post-processing: colour offsets, a learned colour model, saturation, shading, background tone, stretch, blur, sharpen | -0.1 to -14 |
 | A per-garment colour correction predicted from the photo and its background | no better than none (L* error 5.08 vs 5.10) |
@@ -208,11 +182,11 @@ make eval && make eval TEAM=identity    # score both with the frozen scorer
 | `make holdout` | Carves the self-evaluation holdout (5% of the pairs) out of the training pairs |
 | `make predict` | Runs our pipeline (v3) over the holdout into `predictions/<TEAM>/` |
 | `make eval` | Scores `predictions/<TEAM>/` with the official scorer |
-| `make run` / `make validate` | Runs our pipeline over dev into `submissions/<TEAM>/` and checks it |
+| `make run` / `make validate` | Runs our pipeline over dev (`SPLIT=test` for test) into `submissions/<TEAM>/` and checks it (`ZIP=1` also zips it) |
 | `make baseline-nanobanana` | The official hosted baseline over dev (add `-dry` first; costs about $2) |
 | `make predict-nanobanana` | The hosted baseline on the holdout, to compare like for like |
 
-Override defaults on the command line, for example `make eval TEAM=zir JOBS=4 LIMIT=8`. Our experiment scripts (`reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py`) use the starter repo clone in `local/neural-wave-2026` and its holdout; `reconstruct.py` defaults to `--split holdout-small`, a fixed half of that holdout.
+Override defaults on the command line, for example `make eval TEAM=zir JOBS=4 LIMIT=8` or `make run MODEL=nano-banana-pro`. The holdout scores above come from a 38-pair holdout and our own experiment scripts, kept in the tags; `make holdout` carves a 5% holdout, so its scores compare with each other but not with that table.
 
 ## Development
 
@@ -221,7 +195,7 @@ uv run --extra dev ruff check .
 ```
 
 ```bash
-uv run --extra dev mypy src scripts
+uv run --extra dev mypy src
 ```
 
 ```bash

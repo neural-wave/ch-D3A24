@@ -39,8 +39,7 @@ COPY tools ./tools
 # The constraint file freezes the torch and torchvision already in the image, so uv can never
 # replace the CUDA build with a different wheel from PyPI. If grep finds nothing, the build
 # fails here on purpose: it means the base image changed. `--all-extras` pulls the `scorer`
-# group (the vendored `sartiq-score` from tools/scorer via [tool.uv.sources]), the `select`
-# group (CLIP and AlexNet for the v4 selector) and `dev`.
+# group (the vendored `sartiq-score` from tools/scorer via [tool.uv.sources]) and `dev`.
 RUN uv pip freeze --system | grep -iE '^(torch|torchvision)==' > /tmp/torch-constraints.txt \
     && uv pip install --system -r pyproject.toml --all-extras -c /tmp/torch-constraints.txt \
     && python -c "import torch, torchvision; print('torch', torch.__version__, 'torchvision', torchvision.__version__)" \

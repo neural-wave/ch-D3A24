@@ -1,42 +1,36 @@
-"""One garment through the reconstruction pipeline: spec, references, generation, gate.
+"""One garment through the pipeline: spec, one-shot, jury gate, and a repair only if needed.
 
-photos -> spec (vision) -> references (front, named detail photos)
-       -> generate (nano-banana) -> quality gate -> one repair if it fails
+photos -> spec (vision) -> one-shot packshot (nano-banana) -> jury gate (vision)
+       -> no defect: done
+       -> a detail is wrong (logo, text, closures, seams, texture): edit the packshot
+       -> the whole image is wrong (colour, proportions, view, crop): draw it again
+       -> keep the one with fewer defects (a tie keeps the one-shot)
 
-Three versions, kept side by side so they can be compared (holdout scores in the README):
-- "oneshot" (v1): studio prompt and the front photo, one generation, gate only reported.
-- "harness" (v2): studio prompt plus the spec's proportions, details and sets, with the named
-  detail photos; any gate problem gets one repair.
-- "jury" (v3): the one-shot first, because it scores best on the metric. When the gate finds
-  a defect the jury looks at, a detail (logo, text, closures, seams, texture) is fixed by
-  editing the one-shot packshot, and a global one (colour, proportions, view, crop) by
-  drawing it again with the harness. The one with fewer defects is kept (a tie keeps the
-  one-shot).
+The one-shot goes first because it scores best on the metric; the repair only steps in for
+the defects the jury looks at.
 """
 
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from zir_image_enhancer.dataset import GarmentItem
 from zir_image_enhancer.generation.fal_backend import GenerationRequest, GenerationResult, Generator
 from zir_image_enhancer.generation.models import get_model
 from zir_image_enhancer.generation.prompts import build_studio_prompt
 from zir_image_enhancer.reconstruction.gate import GateResult, check
 from zir_image_enhancer.reconstruction.photos import roles_from_filenames
-from zir_image_enhancer.reconstruction.prompt import build_edit_repair_prompt, build_harness_prompt
+from zir_image_enhancer.reconstruction.prompt import build_edit_prompt, build_redraw_prompt
 from zir_image_enhancer.reconstruction.references import Reference, named_detail_references
 from zir_image_enhancer.reconstruction.spec import GarmentSpec, extract_spec
 from zir_image_enhancer.reconstruction.vision import VisionClient
 
-MODES = ("oneshot", "harness", "jury")
-
-# Problems that affect the whole image. In v3 they are repaired by drawing the garment again;
-# the others (logos, text, closures, seams, texture, details) by editing the one-shot packshot.
-# On the holdout, editing kept the shape and fixed details (t0087 +0.8, t0327 +0.9) but could
-# not fix a colour (t0314 -4.1, where regenerating gave +10.4).
+# Problems that affect the whole image, repaired by drawing the garment again; the others
+# (logos, text, closures, seams, texture, details) by editing the one-shot packshot. On the
+# holdout, editing kept the shape and fixed details (t0087 +0.8, t0327 +0.9) but could not
+# fix a colour (t0314 -4.1, where drawing it again gave +10.4).
 GLOBAL_PROBLEMS = (
     "different garment",
     "not the front",
@@ -48,18 +42,17 @@ GLOBAL_PROBLEMS = (
     "cropped",
 )
 
+# The front photo plus up to three named close-ups go with a repair.
+_MAX_REFERENCES = 4
+
 
 @dataclass(frozen=True)
 class ReconstructionSettings:
     model_key: str = "nano-banana-2.1-portrait"
-    use_detail_photos: bool = True
-    gate: bool = True
-    max_references: int = 4
     seed: int = 0
-    mode: str = "jury"  # "oneshot", "harness" or "jury"; see the module docstring
-    # "flat" (studio-style-v2), "ghost" (invisible mannequin) or "auto": ghost only when the
-    # photo shows the garment on a mannequin. On the 10 holdout garments shot on a mannequin
-    # ghost scored +1.3 (7 of 10 wins); on hanger and flat photos it lost 6 to 8 points.
+    # "flat" (laid flat, from above), "ghost" (invisible mannequin) or "auto": ghost only when
+    # the photo shows the garment on a mannequin. On the 10 holdout garments shot on a
+    # mannequin ghost scored +1.3 (7 of 10 wins); on hanger and flat photos it lost 6 to 8.
     studio_style: str = "auto"
 
 
@@ -68,7 +61,7 @@ class Attempt:
     prompt: str
     references: tuple[str, ...]
     image: Path
-    gate: GateResult | None
+    gate: GateResult
     cost_usd: float
 
 
@@ -91,73 +84,38 @@ class Reconstructor:
         self._settings = settings
         self._generator = generator
         self._vision = vision
-        if settings.mode not in MODES:
-            raise ValueError(f"Unknown mode '{settings.mode}'. Choose one of: {', '.join(MODES)}")
         self._model = get_model(settings.model_key)
 
-    def run(self, item: GarmentItem, workdir: Path) -> ReconstructionResult:
+    def run(self, photos: Sequence[Path], workdir: Path) -> ReconstructionResult:
         started = time.perf_counter()
-        spec = extract_spec(roles_from_filenames(item.inputs), self._vision)
+        spec = extract_spec(roles_from_filenames(tuple(photos)), self._vision)
         references: tuple[Reference, ...] = (
             Reference(spec.front, "the whole garment from the front"),
+            *named_detail_references(spec, _MAX_REFERENCES - 1),
         )
-        if self._settings.use_detail_photos:
-            references += named_detail_references(spec, self._settings.max_references - 1)
-
         workdir.mkdir(parents=True, exist_ok=True)
         style = _style_for(self._settings.studio_style, spec)
-        front_only = references[:1]
-        if self._settings.mode == "oneshot":
-            attempts = [
-                self._attempt(
-                    spec,
-                    front_only,
-                    workdir,
-                    0,
-                    build_studio_prompt(style=style),
-                )
-            ]
-            final = attempts[0]
-        elif self._settings.mode == "jury":
-            first = self._attempt(spec, front_only, workdir, 0, build_studio_prompt(style=style))
-            attempts, final = [first], first
-            if first.gate is not None and first.gate.problems:
-                fix = first.gate.fix or "; ".join(first.gate.problems)
-                if any(problem in GLOBAL_PROBLEMS for problem in first.gate.problems):
-                    # Colour, shape or view is wrong everywhere: draw it again from the photo.
-                    prompt = build_harness_prompt(spec, references, fix, style)
-                    repair = self._attempt(spec, references, workdir, 1, prompt)
-                else:
-                    # Only details are wrong: edit the one-shot packshot (image 1) so shape,
-                    # colour and framing stay, with the real photos as the reference.
-                    edit_refs = (Reference(first.image, "the packshot to edit"), *references)
-                    prompt = build_edit_repair_prompt(references, fix)
-                    repair = self._attempt(spec, edit_refs, workdir, 1, prompt)
-                attempts.append(repair)
-                # Strictly fewer defects: on a tie the one-shot stays, it scores better.
-                if repair.gate is not None and repair.gate.weight < first.gate.weight:
-                    final = repair
-        else:
-            first = self._attempt(
-                spec,
-                references,
-                workdir,
-                0,
-                build_harness_prompt(spec, references, style=style),
-            )
-            attempts, final = [first], first
-            if first.gate is not None and first.gate.problems:
-                fix = first.gate.fix or "; ".join(first.gate.problems)
-                prompt = build_harness_prompt(spec, references, fix, style)
-                repair = self._attempt(spec, references, workdir, 1, prompt)
-                attempts.append(repair)
-                # Keep the repair unless the gate finds more problems (severe ones count double).
-                if repair.gate is None or repair.gate.weight <= first.gate.weight:
-                    final = repair
 
-        cost = spec.cost_usd + sum(
-            a.cost_usd + (a.gate.cost_usd if a.gate else 0.0) for a in attempts
-        )
+        first = self._attempt(spec, references[:1], workdir, 0, build_studio_prompt(style=style))
+        attempts, final = [first], first
+        if first.gate.problems:
+            fix = first.gate.fix or "; ".join(first.gate.problems)
+            if any(problem in GLOBAL_PROBLEMS for problem in first.gate.problems):
+                # Colour, shape or view is wrong everywhere: draw it again from the photo.
+                prompt = build_redraw_prompt(spec, references, fix, style)
+                repair = self._attempt(spec, references, workdir, 1, prompt)
+            else:
+                # Only details are wrong: edit the one-shot packshot (image 1) so shape,
+                # colour and framing stay, with the real photos as the reference.
+                edit_refs = (Reference(first.image, "the packshot to edit"), *references)
+                prompt = build_edit_prompt(references, fix)
+                repair = self._attempt(spec, edit_refs, workdir, 1, prompt)
+            attempts.append(repair)
+            # Strictly fewer defects: on a tie the one-shot stays, it scores better.
+            if repair.gate.weight < first.gate.weight:
+                final = repair
+
+        cost = spec.cost_usd + sum(a.cost_usd + a.gate.cost_usd for a in attempts)
         return ReconstructionResult(
             final.image, spec, tuple(attempts), time.perf_counter() - started, cost
         )
@@ -180,7 +138,7 @@ class Reconstructor:
         result: GenerationResult = self._generator.generate(request)
         image = workdir / f"attempt_{sample + 1}.png"
         image.write_bytes(result.png_bytes)
-        gate = check(spec.front, image, spec, self._vision) if self._settings.gate else None
+        gate = check(spec.front, image, spec, self._vision)
         return Attempt(prompt, tuple(str(r.path) for r in references), image, gate, result.cost_usd)
 
 

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+import pytest
 from PIL import Image
 
 from zir_image_enhancer import cli
@@ -18,7 +19,7 @@ class FakePipeline:
     def __init__(self) -> None:
         self.calls: list[tuple[str, int]] = []
 
-    def run(self, photos, name, roles=(), mode=None) -> StudioResult:  # noqa: ANN001
+    def run(self, photos, name, roles=()) -> StudioResult:  # noqa: ANN001
         self.calls.append((name, len(photos)))
         return StudioResult(Path(photos[0]), Path(photos[0]), (), 0.0, 0.0)
 
@@ -91,3 +92,11 @@ def test_run_writes_submission_layout(tmp_path: Path) -> None:
     assert code == 0
     assert (out / "zir" / "d001" / "front.png").is_file()
     assert fake.calls == [("d001", 1)]
+
+
+def test_unknown_model_is_refused(tmp_path: Path) -> None:
+    dataset = tmp_path / "ds"
+    _make_dataset(dataset)
+    args = ["--manifest", str(dataset / "dev" / "inputs.jsonl"), "--out", str(tmp_path)]
+    with pytest.raises(SystemExit):
+        cli.main([*args, "--team", "zir", "--model", "nano-banana-9", "--dry-run"])

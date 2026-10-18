@@ -9,11 +9,15 @@
 #   make holdout predict predict-identity          # self-eval data + predictions
 #   make eval TEAM=zir && make eval TEAM=identity  # compare against the floor
 #   make run validate                              # build + check the dev submission
+#   make run validate SPLIT=test TEAM=d3a24 ZIP=1  # the test submission, zipped
 
 PYTHON      ?= python
 UV          ?= uv pip install --system
 DATASET     ?= data/sartiq_neural_wave_2026
 TEAM        ?= zir
+SPLIT       ?= dev
+MODEL       ?=
+ZIP         ?=
 FRAC        ?= 0.05
 SEED        ?= 0
 JOBS        ?= 1
@@ -70,14 +74,15 @@ baseline:  ## Identity baseline over dev into the submission layout
 		--manifest $(DATASET)/dev/inputs.jsonl \
 		--out submissions --team identity --dataset $(DATASET)
 
-run:  ## Run the pipeline over dev into submissions/<TEAM>/
+run:  ## Run the pipeline over dev (or SPLIT=test) into submissions/<TEAM>/
 	$(PYTHON) -m zir_image_enhancer.cli \
-		--manifest $(DATASET)/dev/inputs.jsonl \
-		--dataset $(DATASET) --out submissions --team $(TEAM)
+		--manifest $(DATASET)/$(SPLIT)/inputs.jsonl \
+		--dataset $(DATASET) --out submissions --team $(TEAM) \
+		$(if $(MODEL),--model $(MODEL),)
 
-validate:  ## Check submissions/<TEAM>/ layout and images before handing in
+validate:  ## Check submissions/<TEAM>/ before handing in (ZIP=1 also writes <TEAM>.zip)
 	$(PYTHON) scripts/make_submission.py \
-		--submissions submissions --team $(TEAM) --dataset $(DATASET)
+		--submissions submissions --team $(TEAM) --dataset $(DATASET) $(if $(ZIP),--zip,)
 
 baseline-nanobanana-dry:  ## Preview hosted-baseline requests (no key, no spend)
 	$(PYTHON) tools/baselines/baseline_nanobanana.py \

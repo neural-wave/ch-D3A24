@@ -3726,10 +3726,6 @@ scorer = [
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "tqdm" },
 ]
-select = [
-    { name = "open-clip-torch" },
-    { name = "torchvision" },
-]
 
 [package.metadata]
 requires-dist = [
@@ -3741,7 +3737,6 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "onnxruntime", marker = "extra == 'scorer'", specifier = ">=1.17" },
     { name = "open-clip-torch", marker = "extra == 'scorer'", specifier = ">=2.24" },
-    { name = "open-clip-torch", marker = "extra == 'select'", specifier = ">=2.24" },
     { name = "pillow", specifier = ">=10.4.0" },
     { name = "pillow-heif", specifier = ">=0.18.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.0.0" },
@@ -3751,7 +3746,6 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8.0" },
     { name = "sartiq-score", marker = "extra == 'scorer'", editable = "tools/scorer" },
     { name = "scipy", marker = "extra == 'scorer'", specifier = ">=1.11" },
-    { name = "torchvision", marker = "extra == 'select'" },
     { name = "tqdm", marker = "extra == 'scorer'", specifier = ">=4.66" },
 ]
-provides-extras = ["scorer", "select", "dev"]
+provides-extras = ["scorer", "dev"]

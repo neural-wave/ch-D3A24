@@ -1,8 +1,10 @@
 """Garment spec: what the garment is, what must be kept, and where the details are.
 
 One vision call per garment with all its photos. It decides the front (unless the file names
-already say it), describes identity and construction, and lists the distinctive details with
-a box on the front photo, so they can be cropped at full resolution and checked afterwards.
+already say it), describes identity and construction, and lists the distinctive details the
+gate checks afterwards. The answer also has fields nothing reads any more (garment_box,
+photo_lighting, the detail boxes); they stay in the prompt because changing its text would
+change every cached answer and the measured results with it.
 """
 
 from __future__ import annotations

@@ -70,8 +70,7 @@ SEVERE = (
 
 @dataclass(frozen=True)
 class GateResult:
-    passed: bool
-    problems: tuple[str, ...]
+    problems: tuple[str, ...]  # empty when the packshot passed
     fix: str
     cost_usd: float
     used_fallback: bool = False
@@ -110,7 +109,7 @@ def check(front: Path, output: Path, spec: GarmentSpec, vision: VisionClient) ->
         answer = vision.ask(_SYSTEM, prompt, [front, output], kind="gate")
     except Exception as error:  # noqa: BLE001
         # A broken check must not block the garment: it passes, and the report says why.
-        return GateResult(True, (f"gate unavailable: {error}",), "", 0.0, used_fallback=True)
+        return GateResult((f"gate unavailable: {error}",), "", 0.0, used_fallback=True)
     data = answer.data
     problems = []
     if data.get("same_garment") is False:
@@ -143,4 +142,4 @@ def check(front: Path, output: Path, spec: GarmentSpec, vision: VisionClient) ->
     for row in rows if isinstance(rows, list) else []:
         if isinstance(row, dict) and row.get("ok") is False:
             problems.append(f"detail wrong: {row.get('name', '?')}")
-    return GateResult(not problems, tuple(problems), str(data.get("fix", "")), answer.cost_usd)
+    return GateResult(tuple(problems), str(data.get("fix", "")), answer.cost_usd)
