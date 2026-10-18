@@ -6,6 +6,22 @@ studio packshot: front view, on a light background, with the real colours and de
 Built by team `D3A24` for the [Sartiq](https://www.sartiq.ai/) challenge at the
 [Neural Wave 2026 Hackathon](https://neuralwave.ch).
 
+**Live demo:** <https://huggingface.co/spaces/slymachenko/zir-image-enhancer>
+
+## Deliverables
+
+Everything we hand in is in [`deliverables/`](deliverables/):
+
+| What | Where |
+|---|---|
+| Final report, with the capture protocol | `deliverables/REPORT.pdf` (coming) |
+| Presentation video | `deliverables/video.mp4` (coming) |
+| Packshots for the 15 on-site garments (`g01`–`g15`) | `deliverables/d3a24_test_v3_pro.zip` |
+| Packshots for the 27 dev garments (69.77 on the dev leaderboard) | `deliverables/d3a24_dev_v3_pro.zip` |
+| The pipeline that made them (v3 with nano-banana Pro) | this repository; see [Run](#run) |
+| Live demo | [Hugging Face Space](https://huggingface.co/spaces/slymachenko/zir-image-enhancer) |
+
+- [Deliverables](#deliverables)
 - [What it does](#what-it-does)
 - [Architecture](#architecture)
 - [Requirements](#requirements)
@@ -28,7 +44,7 @@ Two hosted models do the work, both through [fal.ai](https://fal.ai):
 | Model | Role |
 |---|---|
 | Gemini 2.5 Flash (vision) | Reads the photos before generating (the "spec") and checks the result afterwards (the "gate") |
-| nano-banana 2.1 edit (image) | Draws the packshot from the photos and a written instruction |
+| nano-banana Pro or 2.1 edit (image) | Draws the packshot from the photos and a written instruction (Pro for our submission; 2.1 is the cheaper default) |
 
 Our code around them (the harness) decides which photos are sent, writes the instruction,
 checks the result on what the jury looks at, and repairs it once if needed.
