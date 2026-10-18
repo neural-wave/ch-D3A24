@@ -9,6 +9,8 @@ Team D3A24 · Sartiq challenge · Neural Wave 2026
 | `d3a24_test_v3_pro.zip` | Our packshots for the 15 on-site garments, `g01`–`g15` (scored by the organisers; the references are private) |
 | `d3a24_dev_v3_pro.zip` | Our packshots for the 27 dev garments, `d001`–`d027`: 69.77 on the dev leaderboard |
 
+Source code (the runnable pipeline, with setup and run instructions): <https://github.com/neural-wave/ch-D3A24>
+
 Live demo (temporary, served from our machine): <https://825652e22e901546b4.gradio.live>
 
 Both archives use the official layout `d3a24/<garment_id>/front.png`, were checked with `scripts/make_submission.py` (0 errors) and were made by the pipeline in this repo: v3 with nano-banana Pro. To rebuild them (every paid call is cached, so a rerun is free):

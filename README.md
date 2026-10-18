@@ -18,7 +18,7 @@ Everything we hand in is in [`deliverables/`](deliverables/):
 | Presentation video | link in `deliverables/VIDEO.md` (coming) |
 | Packshots for the 15 on-site garments (`g01`–`g15`) | `deliverables/d3a24_test_v3_pro.zip` |
 | Packshots for the 27 dev garments (69.77 on the dev leaderboard) | `deliverables/d3a24_dev_v3_pro.zip` |
-| The pipeline that made them (v3 with nano-banana Pro) | this repository; see [Run](#run) |
+| The pipeline that made them (v3 with nano-banana Pro) [this repository](https://github.com/neural-wave/ch-D3A24); see [Run](#run) |
 | Live demo | <https://825652e22e901546b4.gradio.live> (temporary) |
 
 - [Deliverables](#deliverables)
