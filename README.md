@@ -6,7 +6,7 @@ studio packshot: front view, on a light background, with the real colours and de
 Built by team `D3A24` for the [Sartiq](https://www.sartiq.ai/) challenge at the
 [Neural Wave 2026 Hackathon](https://neuralwave.ch).
 
-**Live demo:** <https://huggingface.co/spaces/slymachenko/zir-image-enhancer>
+**Live demo:** <https://96b4dc24c3535b0cb6.gradio.live> (a temporary Gradio link served from our machine during the evaluation; run it yourself with `uv run zir-app`)
 
 ## Deliverables
 
@@ -19,7 +19,7 @@ Everything we hand in is in [`deliverables/`](deliverables/):
 | Packshots for the 15 on-site garments (`g01`–`g15`) | `deliverables/d3a24_test_v3_pro.zip` |
 | Packshots for the 27 dev garments (69.77 on the dev leaderboard) | `deliverables/d3a24_dev_v3_pro.zip` |
 | The pipeline that made them (v3 with nano-banana Pro) | this repository; see [Run](#run) |
-| Live demo | [Hugging Face Space](https://huggingface.co/spaces/slymachenko/zir-image-enhancer) |
+| Live demo | <https://96b4dc24c3535b0cb6.gradio.live> (temporary) |
 
 - [Deliverables](#deliverables)
 - [What it does](#what-it-does)
