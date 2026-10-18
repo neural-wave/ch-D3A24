@@ -360,3 +360,7 @@ The self-evaluation harness is vendored unmodified from the official starter rep
 | `tools/baselines/` | `baselines/` | Identity floor and hosted baseline |
 | `scripts/eval_val.py`, `make_holdout.py`, `make_submission.py` | `scripts/` | Unchanged; the `Makefile` supplies this repo's dataset path |
 | `docs/neural-wave-2026/` | `docs/` | Challenge docs and the problem statement |
+
+## License
+
+Our code is released under the [MIT License](LICENSE). The vendored files listed above keep the terms of the starter repo and the hackathon, and the dataset is not part of this repository.
