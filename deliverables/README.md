@@ -4,7 +4,7 @@ Team D3A24 · Sartiq challenge · Neural Wave 2026
 
 | File | What it is |
 |---|---|
-| `REPORT.pdf` | The final report, with the capture protocol (section 6). *Coming.* |
+| `REPORT.pdf` | The final report (3 pages), with the capture protocol in section 6 |
 | `VIDEO.md` | The link to the presentation video. *Coming.* |
 | `d3a24_test_v3_pro.zip` | Our packshots for the 15 on-site garments, `g01`–`g15` (scored by the organisers; the references are private) |
 | `d3a24_dev_v3_pro.zip` | Our packshots for the 27 dev garments, `d001`–`d027`: 69.77 on the dev leaderboard |
