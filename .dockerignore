@@ -32,6 +32,6 @@ runs/
 **/*.gguf
 .gradio/
 .env
-# The vendored scorer's own model cache is downloaded at runtime, not baked in.
+# The vendored scorer's own model cache is downloaded at runtime, not baked in. 
 tools/scorer/.models/
 # The vendored scorer is a path dependency, so tools/ itself must stay in the context.
