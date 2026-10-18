@@ -1,4 +1,4 @@
-# uv-native image: no conda, no system-python installs. uv builds the project
+# uv-native image:
 # environment once at /opt/venv, outside the workspace bind mount, so it survives at
 # runtime and the same image works on Vast.ai. Pinned so every rebuild gets the same uv
 # (reproducible with uv.lock via `uv sync --locked`).

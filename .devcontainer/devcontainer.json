@@ -4,11 +4,11 @@
         "dockerfile": "Dockerfile",
         "context": ".."
     },
-    "runArgs": [
-        "--shm-size=8g"
-    ],
     "mounts": [
         "source=zir-model-cache,target=/root/.cache,type=volume"
+    ],
+    "runArgs": [
+        "--shm-size=8g"
     ],
     "containerEnv": {
         "GRADIO_SERVER_NAME": "0.0.0.0",

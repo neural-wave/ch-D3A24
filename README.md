@@ -26,7 +26,7 @@ flowchart TD
     A["Phone photos<br/>front, back, close-ups"] --> B["Prepare<br/>upright JPEG"]
     B --> S{{"Input assessment<br/>score + drop non-evidence"}}
     S --> C{{"Spec<br/>Gemini 2.5 Flash"}}
-    C --> D["Pick references<br/>front + pipeline-picked close-ups"]
+    C --> D["Preprocess + references<br/>OpenCV: white balance, tone,<br/>detail crops, controlled grain"]
     C --> E["Write the prompt<br/>studio style + proportions,<br/>studio light, details, sets"]
     D --> F[["Generate<br/>nano-banana 2.1 edit"]]
     E --> F
@@ -53,6 +53,7 @@ sequenceDiagram
     V-->>H: scores; non-evidence dropped
     H->>V: kept photos
     V-->>H: spec: front, type, details, proportions, photo setup, pieces
+    H->>H: preprocess references (OpenCV: normalise, crop details)
     H->>G: front + pipeline-picked close-ups, prompt
     G-->>H: packshot
     H->>V: real photo + packshot
@@ -167,6 +168,7 @@ uv run --extra select python scripts/run_v4.py --name ours --manifest local/capt
 | `scripts/reconstruct.py`, `score_run.py`, `compare_sheet.py`, `gallery.py` | Holdout runs, official scoring, side-by-side sheets |
 | `scripts/eval_val.py`, `make_holdout.py`, `make_submission.py` | Official starter scripts (vendored) |
 | `docs/PROMPTS.md` | Every prompt we tried and how it scored |
+| `docs/PREPROCESSING.md` | The OpenCV preprocessing, its knobs and its evidence |
 | `experiments/results.csv` | Every scored run |
 | `tools/`, `docs/neural-wave-2026/` | Official scorer, baselines and challenge docs (vendored) |
 
