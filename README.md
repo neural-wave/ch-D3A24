@@ -211,6 +211,14 @@ Or `make fmt`, `make lint`, `make type`, `make test`, or `make check` for all of
 
 A VS Code Dev Container (`.devcontainer/`) is included; on Vast.ai, build the same image with `docker build -f .devcontainer/Dockerfile .` and expose port 7860. It is uv-native (no conda) and installs the project environment into `/opt/venv`.
 
+The default dev image is lean: the app and CLI only call hosted models, so the heavy `scorer` extra (torch, onnxruntime, open_clip, rembg) is **not** installed. Build the self-evaluation image when you need the official scorer:
+
+```
+docker build -f .devcontainer/Dockerfile --build-arg SCORER=1 -t zir-eval .
+```
+
+In VS Code, set `"SCORER": "1"` under `build.args` in `.devcontainer/devcontainer.json`. Both variants install everything else the same way.
+
 ## Credits
 
 The self-evaluation harness is vendored unmodified from the official starter repo [`shootify-io/neural-wave-2026`](https://github.com/shootify-io/neural-wave-2026) at commit `ce3d736` (16 October 2026), under the Neural Wave 2026 hackathon terms:
